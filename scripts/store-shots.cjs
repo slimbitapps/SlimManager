@@ -17,14 +17,14 @@ const OUT = path.join(ROOT, 'marketing', 'screenshots');
 
 // [Dateiname, Laptop-Bild, Handy-Bild, Überschrift DE, Unterzeile DE, Überschrift EN, Unterzeile EN]
 const SLIDES = [
-  ['1-hero', '10-home-qr', '20-phone-remote', 'Dein Handy als Präsentations-Fernbedienung', 'QR-Code scannen und los – keine App auf dem Handy nötig.', 'Your phone as a presentation remote', 'Scan the QR code and go – no app on your phone.'],
-  ['2-remote', '11-home-connected', '20-phone-remote', 'Großer Weiter-Knopf und Live-Vorschau', 'Du siehst am Handy, was das Publikum sieht.', 'Big Next button and live preview', 'See on your phone what the audience sees.'],
-  ['3-laser', null, '22-phone-laser', 'Laserpointer ohne Laserpointer', 'Auf die Vorschau tippen – der rote Punkt erscheint auf dem Beamer.', 'A laser pointer without a laser pointer', 'Touch the preview – the red dot appears on the projector.'],
-  ['4-spotlight', null, '23-phone-spotlight', 'Spotlight lenkt den Blick', 'Eine Stelle bleibt hell, der Rest wird dunkel.', 'Spotlight guides every eye', 'One spot stays bright, the rest goes dark.'],
-  ['5-timer', '12-home-timer', '24-phone-timer', 'Timer, den nur du siehst', 'Der Bildschirm blinkt kurz vor dem Ende – unauffällig.', 'A timer only you can see', 'The screen flashes before time runs out – quietly.'],
-  ['6-hotspot', '17-hotspot-guide', null, 'Klappt auch im Schul-WLAN', 'Mit dem Handy-Hotspot – die App erklärt jeden Schritt.', 'Works on school Wi-Fi, too', 'With your phone’s hotspot – the app explains every step.'],
-  ['7-secure', '13-approval', '27-phone-wait-approval', 'Sicher: Nur dein Handy steuert', 'Einmal-Code im QR, signierte Befehle, weitere Geräte nur mit Zustimmung.', 'Secure: only your phone is in control', 'One-time code, signed commands, extra devices only with your OK.'],
-  ['8-any-app', '18-home-light', '26-phone-landscape', 'PowerPoint, Keynote, Google Slides, PDF', 'Hell oder dunkel, hoch oder quer – kostenlos für Windows & Mac.', 'PowerPoint, Keynote, Google Slides, PDF', 'Light or dark, portrait or landscape – free for Windows & Mac.'],
+  ['1-hero', '10-dashboard-neon', '50-phone-dashboard', 'Der Task-Manager für Gamer', 'Live-Werte in deinem Look – am PC und auf dem Handy. Kostenlos.', 'The task manager for gamers', 'Live stats in your style – on your PC and on your phone. Free.'],
+  ['2-boost', '31-boost-active', '53-phone-boost', 'Game Boost mit einem Klick', 'Hintergrund-Ballast eingefroren, dein Spiel bekommt die Leistung.', 'Game Boost in one click', 'Background clutter frozen, your game gets the power.'],
+  ['3-skins', '14-skin-retro', null, 'Dein Dashboard, dein Look', '7 Skins, eigenes Hintergrundbild, jede Kachel frei anpassbar.', 'Your dashboard, your look', '7 skins, your own background, every tile fully customizable.'],
+  ['4-detail', '27-detail-cpu', null, 'Tippen – und du siehst, wer bremst', 'Jede Kachel zeigt, welche App wie viel Leistung zieht.', 'Tap – and see what slows you down', 'Every tile shows which app uses how much power.'],
+  ['5-tablet', '54-tablet-dashboard', null, 'Zweiter Bildschirm: dein Tablet', 'QR-Code scannen – keine App nötig. Sicher gekoppelt.', 'Second screen: your tablet', 'Scan the QR code – no app needed. Securely paired.'],
+  ['6-focus', '33-focus-active', null, 'Fokus-Modus zum Arbeiten', 'Ballast leise, Lüfter ruhiger, Windows Update pausiert.', 'Focus mode for work', 'Clutter quiet, fans calmer, Windows Update paused.'],
+  ['7-keep', '31-boost-active', null, 'Headset & Discord laufen weiter', 'Programme, die du beim Zocken brauchst, werden nie angefasst.', 'Headset & Discord keep running', 'Apps you need while gaming are never touched.'],
+  ['8-light', '19-skin-neon-rgb', '51-phone-processes', 'Federleicht – unter 1 % CPU', 'Kein Konto, keine Werbung, keine Cloud. Für Windows & Mac.', 'Featherweight – under 1 % CPU', 'No account, no ads, no cloud. For Windows & Mac.'],
 ];
 
 function html(lang, [, laptop, phone, hDe, sDe, hEn, sEn]) {
@@ -36,7 +36,7 @@ function html(lang, [, laptop, phone, hDe, sDe, hEn, sEn]) {
   return `<!doctype html><html><head><meta charset="utf-8"><style>
   * { box-sizing: border-box; }
   body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; font-family: -apple-system, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif;
-    background: radial-gradient(1100px 700px at 85% -10%, rgba(255,77,109,.45), transparent 60%), radial-gradient(900px 600px at -10% 110%, rgba(255,122,89,.35), transparent 60%), #111216; color: #fff; }
+    background: radial-gradient(1100px 700px at 85% -10%, rgba(139,92,246,.50), transparent 60%), radial-gradient(900px 600px at -10% 110%, rgba(255,79,216,.30), transparent 60%), #111216; color: #fff; }
   .head { position: absolute; left: 110px; top: 90px; width: ${phoneOnly ? 760 : 1700}px; }
   .brand { display: flex; align-items: center; gap: 14px; font-weight: 700; font-size: 28px; color: rgba(255,255,255,.85); margin-bottom: 30px; }
   .brand img { width: 52px; height: 52px; }
@@ -52,7 +52,7 @@ function html(lang, [, laptop, phone, hDe, sDe, hEn, sEn]) {
   .phone.l img { border-radius: 32px; }
   .phone.p.crop { height: ${phoneOnly ? 900 : 760}px; overflow: hidden; }
   </style></head><body>
-  <div class="head"><div class="brand"><img src="file://${path.join(ROOT, 'brand', 'slimclick.png')}">SlimClick</div><h1>${h}</h1><p>${s}</p></div>
+  <div class="head"><div class="brand"><img src="file://${path.join(ROOT, 'brand', 'slimmanager.png')}">SlimManager</div><h1>${h}</h1><p>${s}</p></div>
   ${laptop ? `<div class="laptop"><img src="${raw(laptop)}"></div>` : ''}
   ${phone ? `<div class="phone ${landscape ? 'l' : 'p crop'}"><img src="${raw(phone)}"></div>` : ''}
   </body></html>`;
@@ -65,7 +65,7 @@ app.whenReady().then(async () => {
   const win = new BrowserWindow({ width: 1920, height: 1080, show: false, useContentSize: true, webPreferences: { offscreen: true } });
   for (const lang of ['de', 'en']) {
     for (const slide of SLIDES) {
-      const tmp = path.join(os.tmpdir(), `slimclick-shot-${lang}-${slide[0]}.html`);
+      const tmp = path.join(os.tmpdir(), `slimmanager-shot-${lang}-${slide[0]}.html`);
       fs.writeFileSync(tmp, html(lang, slide));
       await win.loadFile(tmp);
       await new Promise((r) => setTimeout(r, 400));

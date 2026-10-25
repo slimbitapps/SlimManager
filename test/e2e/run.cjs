@@ -274,9 +274,9 @@ function coreClient(port, token) {
 
     // ---------------------------------------------------------------- Prozesse
     const d1 = dummy('SlimTestDummy');
-    const d2 = dummy('SlimTestGame');
-    const d3 = dummy('SlimTestHelper');
-    const d4 = dummy('SlimTestKeep');
+    const d2 = dummy('NeonRacer');
+    const d3 = dummy('PopupHelper');
+    const d4 = dummy('HeadsetHub');
     await win.click('[data-testid="nav-processes"]');
     await win.waitForSelector('[data-testid="proc-row"]');
     await sleep(2500);
@@ -294,10 +294,10 @@ function coreClient(port, token) {
     await win.click('[data-testid="kill-yes"]');
     await waitFor(() => !alive(d1), 4000, 'Prozess beendet');
     // Test-Spiel als Spiel markieren (eigene Spiele-Liste)
-    await win.fill('[data-testid="procs-search"]', 'SlimTestGame');
-    await win.click('[data-testid="proc-row"][data-name="SlimTestGame"]');
+    await win.fill('[data-testid="procs-search"]', 'NeonRacer');
+    await win.click('[data-testid="proc-row"][data-name="NeonRacer"]');
     await win.click('[data-testid="mark-game"]');
-    await win.waitForSelector('[data-testid="proc-row"][data-name="SlimTestGame"] .kind-badge.k-game', { timeout: 6000 });
+    await win.waitForSelector('[data-testid="proc-row"][data-name="NeonRacer"] .kind-badge.k-game', { timeout: 6000 });
     await win.fill('[data-testid="procs-search"]', '');
 
     // Systemprozesse sind geschützt
@@ -314,20 +314,20 @@ function coreClient(port, token) {
 
     // ---------------------------------------------------------------- Boost: Gaming
     await win.click('[data-testid="nav-boost"]');
-    await win.waitForSelector('[data-testid="boost-pick"] option[value="SlimTestGame"]', { state: 'attached', timeout: 10000 });
-    // Ausnahme eintippen: SlimTestKeep darf nie angefasst werden
-    await win.fill('[data-testid="exceptions"] input', 'SlimTestKeep');
+    await win.waitForSelector('[data-testid="boost-pick"] option[value="NeonRacer"]', { state: 'attached', timeout: 10000 });
+    // Ausnahme eintippen: HeadsetHub darf nie angefasst werden
+    await win.fill('[data-testid="exceptions"] input', 'HeadsetHub');
     await win.press('[data-testid="exceptions"] input', 'Enter');
-    await win.waitForSelector('[data-testid="exceptions"] .name-chip:has-text("SlimTestKeep")');
-    // SlimTestHelper soll eingefroren werden (eigene Liste – automatisch friert SlimManager nur bekannten Ballast ein)
-    await win.fill('[data-testid="freezelist"] input', 'SlimTestHelper');
+    await win.waitForSelector('[data-testid="exceptions"] .name-chip:has-text("HeadsetHub")');
+    // PopupHelper soll eingefroren werden (eigene Liste – automatisch friert SlimManager nur bekannten Ballast ein)
+    await win.fill('[data-testid="freezelist"] input', 'PopupHelper');
     await win.press('[data-testid="freezelist"] input', 'Enter');
-    await win.waitForSelector('[data-testid="freezelist"] .name-chip:has-text("SlimTestHelper")');
-    await win.selectOption('[data-testid="boost-pick"]', 'SlimTestGame');
+    await win.waitForSelector('[data-testid="freezelist"] .name-chip:has-text("PopupHelper")');
+    await win.selectOption('[data-testid="boost-pick"]', 'NeonRacer');
     await shot(win, '30-boost');
     await win.click('[data-testid="boost-start"]');
     await win.waitForSelector('[data-testid="boost-status"]');
-    // Hintergrund-Programm (SlimTestHelper) wird eingefroren, die Ausnahme läuft weiter
+    // Hintergrund-Programm (PopupHelper) wird eingefroren, die Ausnahme läuft weiter
     if (process.platform !== 'win32') {
       await waitFor(() => stopped(d3), 5000, 'Helfer eingefroren');
       assert.ok(!stopped(d4), 'Ausnahme darf nicht eingefroren werden');
@@ -342,7 +342,7 @@ function coreClient(port, token) {
 
     // ---------------------------------------------------------------- Fokus-Modus
     await win.click('[data-testid="mode-focus"]');
-    await win.fill('[data-testid="freezelist"] input', 'SlimTestHelper');
+    await win.fill('[data-testid="freezelist"] input', 'PopupHelper');
     await win.press('[data-testid="freezelist"] input', 'Enter');
     await shot(win, '32-focus');
     await win.click('[data-testid="boost-start"]');
@@ -425,8 +425,8 @@ function coreClient(port, token) {
     await phone.click('[data-testid="r-tab-procs"]');
     await phone.waitForSelector('[data-testid="r-proc"]', { timeout: 8000 });
     await shot(phone, '51-phone-processes');
-    await phone.fill('.r-search', 'SlimTestHelper');
-    await phone.click('[data-testid="r-proc"][data-name="SlimTestHelper"]');
+    await phone.fill('.r-search', 'PopupHelper');
+    await phone.click('[data-testid="r-proc"][data-name="PopupHelper"]');
     await shot(phone, '52-phone-process-sheet');
     await phone.click('[data-testid="r-kill"]');
     await waitFor(() => !alive(d3), 5000, 'Handy hat Prozess beendet');
@@ -434,7 +434,7 @@ function coreClient(port, token) {
     // Handy: Boost starten und beenden
     await phone.click('[data-testid="r-tab-boost"]');
     await phone.waitForSelector('[data-testid="r-boost"]');
-    await phone.selectOption('.r-select', 'SlimTestGame');
+    await phone.selectOption('.r-select', 'NeonRacer');
     await phone.click('[data-testid="r-boost-start"]');
     await waitFor(async () => ((await st()).boost).active, 6000, 'Boost vom Handy');
     await phone.waitForSelector('[data-testid="r-boost-stop"]');

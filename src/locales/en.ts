@@ -301,7 +301,7 @@ export const en: Dict = {
   'fx.trimmed': 'Freed RAM of {n} programs',
   'fx.power': 'High performance',
   'fx.quiet': 'Quiet (turbo off)',
-  'fx.kept': '{n} exceptions protected',
+  'fx.kept': 'Exceptions protected: {n}',
   'fx.services': '{n} Windows services paused',
   'fx.services.asking': 'Waiting for admin confirmation …',
   'fx.services.denied': 'Services: admin rights denied',

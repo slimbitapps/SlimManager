@@ -312,7 +312,7 @@ export const de = {
   'fx.trimmed': 'RAM von {n} Programmen freigegeben',
   'fx.power': 'Höchstleistung',
   'fx.quiet': 'Leise (Turbo aus)',
-  'fx.kept': '{n} Ausnahmen geschützt',
+  'fx.kept': 'Geschützte Ausnahmen: {n}',
   'fx.services': '{n} Windows-Dienste pausiert',
   'fx.services.asking': 'Warte auf Admin-Bestätigung …',
   'fx.services.denied': 'Dienste: Admin-Rechte abgelehnt',
