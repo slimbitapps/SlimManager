@@ -1,0 +1,10 @@
+node_modules/
+dist/
+release/
+*.log
+.DS_Store
+# Eigene Fotos/Dateien nie hochladen
+private/
+video-out/
+test-build/
+test-shots/

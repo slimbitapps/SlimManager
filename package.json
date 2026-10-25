@@ -1,0 +1,139 @@
+{
+  "name": "slimmanager",
+  "version": "1.0.0",
+  "description": "Moderner Task-Manager für Gamer – anpassbares Dashboard, Game Boost, Live-Werte aufs Handy",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "start": "vite build && electron .",
+    "build": "vite build",
+    "typecheck": "tsc -p .",
+    "test": "node --test test/*.test.cjs && node --experimental-strip-types --no-warnings --test test/*.test.mjs",
+    "test:e2e": "vite build && node test/e2e/run.cjs",
+    "icons": "electron scripts/make-icons.cjs",
+    "dist:win": "vite build && electron-builder --win",
+    "dist:mac": "vite build && electron-builder --mac",
+    "dist:linux": "vite build && electron-builder --linux"
+  },
+  "author": "SlimBit Apps",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
+    "nosleep.js": "^0.12.0",
+    "playwright-core": "^1.56.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "zustand": "^5.0.15"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "systeminformation": "^5.33.16",
+    "ws": "^8.18.3"
+  },
+  "productName": "SlimManager",
+  "private": true,
+  "build": {
+    "appId": "app.slimbit.slimmanager",
+    "productName": "SlimManager",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "electron/**",
+      "package.json",
+      "!**/*.map"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "SlimManager-Windows-portable.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "SlimManager",
+      "installerLanguages": [
+        "de_DE",
+        "en_US"
+      ],
+      "multiLanguageInstaller": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "SlimManager-Setup.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.utilities",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSLocalNetworkUsageDescription": "SlimManager shows your PC stats on your phone over the local network."
+      },
+      "artifactName": "SlimManager-Mac-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "System"
+    },
+    "dmg": {
+      "title": "SlimManager",
+      "background": "build/background.png",
+      "iconSize": 110,
+      "window": {
+        "width": 660,
+        "height": 420
+      },
+      "contents": [
+        {
+          "x": 170,
+          "y": 215,
+          "type": "file"
+        },
+        {
+          "x": 490,
+          "y": 215,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "compression": "maximum",
+    "electronLanguages": [
+      "de",
+      "en",
+      "en-US",
+      "en-GB"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/slimbitapps/SlimManager.git"
+  }
+}

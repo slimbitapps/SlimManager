@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SlimClick – Free Presentation Remote: Use Your Phone as a Clicker · Handy als Präsentations-Fernbedienung</title>
+<meta name="description" content="SlimClick turns your phone into a presentation remote for PowerPoint, Keynote, Google Slides and PDF – scan a QR code, no app install. Laser pointer, slide preview, timer. Free for Windows and Mac. Kostenlos, ohne Konto, funktioniert auch im Schul-WLAN per Hotspot." />
+<link rel="canonical" href="https://slimbitapps.github.io/SlimClick/" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="SlimClick – Your phone as a presentation remote" />
+<meta property="og:description" content="Scan a QR code and control PowerPoint, Keynote, Google Slides or PDF from your phone. Laser pointer, preview, timer. Free." />
+<meta property="og:url" content="https://slimbitapps.github.io/SlimClick/" />
+<meta property="og:image" content="https://slimbitapps.github.io/SlimClick/app.jpg" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="keywords" content="presentation remote, phone as clicker, PowerPoint remote, Keynote remote, Google Slides remote, laser pointer app, Präsentation Fernbedienung, Handy als Presenter, Referat, Schule" />
+<meta name="robots" content="index, follow" />
+<link rel="alternate" hreflang="de" href="https://slimbitapps.github.io/SlimClick/" />
+<link rel="alternate" hreflang="en" href="https://slimbitapps.github.io/SlimClick/" />
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "SoftwareApplication",
+   "name": "SlimClick",
+   "alternateName": ["SlimClick Presentation Remote"],
+   "applicationCategory": "BusinessApplication",
+   "applicationSubCategory": "Presentation remote",
+   "operatingSystem": "Windows 10, Windows 11, macOS 12+",
+   "description": "Free app for Windows and Mac that turns any phone into a presentation remote. Scan a QR code – a web page opens, no app install. Works with PowerPoint, Keynote, Google Slides, LibreOffice and PDF. Laser pointer and spotlight on the screen, slide preview on the phone, presentation timer with silent warning. Secure pairing, works on school Wi-Fi via phone hotspot.",
+   "url": "https://slimbitapps.github.io/SlimClick/",
+   "downloadUrl": "https://github.com/slimbitapps/SlimClick/releases/latest",
+   "softwareVersion": "1.0",
+   "isAccessibleForFree": true,
+   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+   "image": "https://slimbitapps.github.io/SlimClick/icon.png",
+   "screenshot": "https://slimbitapps.github.io/SlimClick/app.jpg",
+   "featureList": ["Phone as presentation clicker via QR code", "No app install on the phone", "Laser pointer and spotlight", "Slide preview on the phone", "Presentation timer with silent warning", "Go to slide number", "Black screen", "Secure one-time pairing", "Works on school Wi-Fi with a phone hotspot"],
+   "inLanguage": ["en", "de", "fr", "es", "it"],
+   "author": { "@type": "Organization", "name": "SlimBit Apps", "url": "https://slimbitapps.github.io/" }
+  },
+  {
+   "@type": "FAQPage",
+   "mainEntity": [
+    { "@type": "Question", "name": "How can I use my phone as a presentation remote without installing an app?", "acceptedAnswer": { "@type": "Answer", "text": "Install the free SlimClick app on your laptop (Windows or Mac). It shows a QR code. Scan it with your phone camera – a web page opens that controls your slides. Nothing is installed on the phone." } },
+    { "@type": "Question", "name": "Does SlimClick work with PowerPoint, Keynote, Google Slides and PDF?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. SlimClick sends the same keys as a normal clicker (arrow keys), so it works with every program that reacts to them: PowerPoint, Keynote, Google Slides, LibreOffice Impress, Canva and PDF viewers in full screen." } },
+    { "@type": "Question", "name": "My school Wi-Fi blocks the connection. What can I do?", "acceptedAnswer": { "@type": "Answer", "text": "Many school and company networks keep devices apart. Turn on your phone's hotspot and connect the laptop to it. SlimClick updates the QR code by itself. The connection between phone and laptop uses no mobile data." } },
+    { "@type": "Question", "name": "Can someone else in the room take control?", "acceptedAnswer": { "@type": "Answer", "text": "No. The QR code contains a secret one-time key that is never sent over the network. Every command is signed. If a phone is already connected, any further device must be approved on the laptop." } },
+    { "@type": "Question", "name": "Does SlimClick have a laser pointer and a timer?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Touch the slide preview on your phone and a red laser dot (or a spotlight) appears exactly there on the projector. The presentation timer runs on the phone; its screen briefly flashes 5, 2 and 1 minute before the end." } },
+    { "@type": "Question", "name": "Do I need internet or an account?", "acceptedAnswer": { "@type": "Answer", "text": "No. Phone and laptop connect directly over the local Wi-Fi or a phone hotspot. No account, no cloud, no mobile data used." } },
+    { "@type": "Question", "name": "Is SlimClick free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Completely free – no ads, no account, no subscription and no data collection." } }
+   ]
+  }
+ ]
+}
+</script>
+<link rel="icon" href="icon.png" />
+<style>
+  /* ============ EINSTELLUNGEN – hier anpassen ============ */
+  /* (siehe Skript unten: REPO, MAC_SIGNED, STORE_URL) */
+  :root {
+    --bg: #f4f5f7; --panel: #fff; --text: #1a1d23; --muted: #5a6270; --border: #e0e3e8;
+    --accent: #e5294f; --accent-2: #c81e43; --soft: rgba(229,41,79,.09); --warn: #b26b00; --warn-bg: #fff6e5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111317; --panel: #1b1f25; --text: #e8eaef; --muted: #a2a9b5; --border: #2c323c;
+      --accent: #ff4d6d; --accent-2: #e5294f; --soft: rgba(255,77,109,.15); --warn: #f5a524; --warn-bg: rgba(245,165,36,.12);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #111317; --panel: #1b1f25; --text: #e8eaef; --muted: #a2a9b5; --border: #2c323c;
+    --accent: #ff4d6d; --accent-2: #e5294f; --soft: rgba(255,77,109,.15); --warn: #f5a524; --warn-bg: rgba(245,165,36,.12);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Arial, sans-serif; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 0 16px; }
+  header { display: flex; align-items: center; gap: 10px; padding: 18px 0; }
+  .logo { width: 34px; height: 34px; border-radius: 9px; }
+  header b { font-size: 18px; flex: 1; }
+  .home { color: var(--muted); text-decoration: none; font-size: 15px; padding: 6px 10px; border-radius: 8px; }
+  .home:hover { color: var(--text); background: var(--soft); }
+  .lang { border: 1px solid var(--border); background: var(--panel); color: var(--text); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+  .hero { text-align: center; padding: 40px 0 24px; }
+  .hero h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.15; margin: 0 0 12px; }
+  .hero p { color: var(--muted); font-size: 18px; margin: 0 auto 28px; max-width: 600px; }
+  .dl { display: inline-flex; align-items: center; gap: 12px; padding: 16px 28px; border-radius: 14px;
+    background: var(--accent); color: #fff; text-decoration: none; font-size: 19px; font-weight: 650;
+    box-shadow: 0 8px 24px rgba(229,41,79,.32); background: linear-gradient(135deg,#ff7a59,var(--accent)); }
+  .dl:hover { background: var(--accent-2); }
+  .dl small { display: block; font-weight: 400; font-size: 13px; opacity: .85; }
+  .other { margin-top: 14px; color: var(--muted); font-size: 14px; }
+  .other a { color: var(--accent); }
+  .store { display: inline-block; margin-top: 12px; }
+  .tabs { display: flex; gap: 6px; justify-content: center; margin: 40px 0 16px; }
+  .tabs button { border: 1px solid var(--border); background: var(--panel); color: var(--text);
+    padding: 8px 16px; border-radius: 10px; cursor: pointer; font: inherit; }
+  .tabs button.on { border-color: var(--accent); background: var(--soft); color: var(--accent); font-weight: 600; }
+  h2 { text-align: center; margin: 0 0 6px; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 18px 0; }
+  @media (max-width: 720px) { .steps { grid-template-columns: 1fr; } }
+  .step { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 16px; }
+  .step .n { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff;
+    display: grid; place-items: center; font-weight: 700; margin-bottom: 10px; }
+  .step h3 { margin: 0 0 4px; font-size: 17px; }
+  .step p { margin: 0; color: var(--muted); font-size: 14.5px; }
+  .pic { margin: 12px 0 0; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); padding: 10px; }
+  .pic svg { width: 100%; height: auto; display: block; }
+  .note { background: var(--warn-bg); border: 1px solid var(--warn); border-radius: 14px; padding: 14px 16px; margin: 12px 0; }
+  .note b { color: var(--warn); }
+  .note ol { margin: 8px 0 0; padding-left: 22px; }
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 48px 0; }
+  .f { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
+  .f b { display: block; margin-bottom: 2px; }
+  .f span { color: var(--muted); font-size: 14.5px; }
+  .faq { max-width: 760px; margin: 0 auto 40px; }
+  .faq h2 { margin-bottom: 16px; }
+  .faq details { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; }
+  .faq summary { cursor: pointer; font-weight: 600; }
+  .faq p { margin: 8px 0 2px; color: var(--muted); }
+  footer { color: var(--muted); font-size: 13px; text-align: center; padding: 30px 0 50px; }
+  kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; font-size: 13px; background: var(--panel); }
+  [hidden] { display: none !important; }
+  .shots { display: grid; grid-template-columns: 2.2fr 1fr; gap: 14px; align-items: end; margin: 8px 0 0; }
+  .shots img { width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 12px 40px rgba(0,0,0,.18); display: block; }
+  @media (max-width: 640px) { .shots { grid-template-columns: 1fr; } .shots img.ph { max-width: 260px; margin: 0 auto; } }
+  .how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 40px 0 0; }
+  @media (max-width: 720px) { .how { grid-template-columns: 1fr; } }
+  .how div { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 16px; }
+  .how b { display: block; font-size: 17px; margin-bottom: 4px; }
+  .how span { color: var(--muted); font-size: 14.5px; }
+  .how i { font-style: normal; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--soft); color: var(--accent); font-weight: 700; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img class="logo" src="icon.png" alt="" />
+    <b>SlimClick</b>
+    <a class="home" href="https://slimbitapps.github.io/" data-i="allApps">Alle Apps</a>
+    <button class="lang" id="lang">English</button>
+  </header>
+
+  <section class="hero">
+    <h1 data-i="title">Dein Handy als Präsentations-Fernbedienung.</h1>
+    <p data-i="sub">QR-Code scannen und los – keine App auf dem Handy nötig. Folien wechseln, Laserpointer, Vorschau und Timer. Für PowerPoint, Keynote, Google Slides und PDF. Kostenlos.</p>
+    <a class="dl" id="dl" href="#">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M6 11l6 6 6-6M4 21h16"/></svg>
+      <span><span id="dlText">Herunterladen</span><small id="dlSub"></small></span>
+    </a>
+    <div class="other" id="other"></div>
+  </section>
+
+  <div class="shots">
+    <img src="app.jpg" alt="SlimClick auf dem Laptop mit QR-Code" loading="lazy" />
+    <img class="ph" src="phone.jpg" alt="SlimClick auf dem Handy mit Laserpointer" loading="lazy" />
+  </div>
+
+  <section class="how">
+    <div><i>1</i><b data-i="h1h">QR-Code scannen</b><span data-i="h1p">SlimClick am Laptop öffnen, mit der Handy-Kamera scannen. Es öffnet sich eine Webseite.</span></div>
+    <div><i>2</i><b data-i="h2h">Präsentation starten</b><span data-i="h2p">PowerPoint, Keynote, Google Slides oder PDF im Vollbild – wie immer.</span></div>
+    <div><i>3</i><b data-i="h3h">Weiter tippen</b><span data-i="h3p">Großer Knopf für „Weiter“, Laser auf der Vorschau, Timer warnt vor dem Ende.</span></div>
+  </section>
+
+  <div class="tabs">
+    <button id="tabWin">Windows</button>
+    <button id="tabMac">Mac</button>
+  </div>
+
+  <!-- ===================== WINDOWS ===================== -->
+  <section id="win">
+    <h2 data-i="winH">So installierst du es unter Windows</h2>
+    <div class="steps">
+      <div class="step"><div class="n">1</div>
+        <h3 data-i="w1h">Herunterladen</h3>
+        <p data-i="w1p">Klicke oben auf „Herunterladen“. Die Datei <b>SlimClick-Setup.exe</b> landet in deinem Download-Ordner.</p>
+      </div>
+      <div class="step"><div class="n">2</div>
+        <h3 data-i="w2h">Doppelklicken</h3>
+        <p data-i="w2p">Öffne die Datei mit Doppelklick. Die Installation läuft von selbst – du musst nichts auswählen.</p>
+      </div>
+      <div class="step"><div class="n">3</div>
+        <h3 data-i="w3h">„Zugriff zulassen“</h3>
+        <p data-i="w3p">Beim ersten Start fragt die Windows-Firewall, ob SlimClick ins Netzwerk darf. Klicke auf <b>„Zugriff zulassen“</b> – sonst findet dein Handy den Laptop nicht.</p>
+      </div>
+    </div>
+    <div class="note" id="winNote">
+      <b data-i="wnH">Falls ein blaues Fenster „Der Computer wurde durch Windows geschützt“ erscheint:</b>
+      <ol>
+        <li data-i="wn1">Klicke auf den Text <b>„Weitere Informationen“</b>.</li>
+        <li data-i="wn2">Klicke auf <b>„Trotzdem ausführen“</b>.</li>
+      </ol>
+      <span data-i="wn3">Das passiert bei neuen Programmen, die Windows noch nicht kennt. Kein Admin-Recht am Schul-PC? Nimm die <b>portable ZIP</b>: entpacken, SlimClick.exe starten.</span>
+    </div>
+  </section>
+
+  <!-- ===================== MAC ===================== -->
+  <section id="mac" hidden>
+    <h2 data-i="macH">So installierst du es auf dem Mac</h2>
+    <div class="steps">
+      <div class="step"><div class="n">1</div>
+        <h3 data-i="m1h">Herunterladen &amp; öffnen</h3>
+        <p data-i="m1p">Klicke oben auf „Herunterladen“ und öffne dann <b>SlimClick-Mac.dmg</b> aus deinem Download-Ordner.</p>
+      </div>
+      <div class="step"><div class="n">2</div>
+        <h3 data-i="m2h">In „Programme“ ziehen</h3>
+        <p data-i="m2p">Ziehe das <b>SlimClick-Symbol</b> auf den Ordner <b>„Programme“</b> daneben. Dann aus „Programme“ starten.</p>
+      </div>
+      <div class="step"><div class="n">3</div>
+        <h3 data-i="m3h">Zwei Erlaubnisse</h3>
+        <p data-i="m3p">Die App führt dich hin: <b>Bedienungshilfen</b> (zum Weiterschalten, Pflicht) und <b>Bildschirmaufnahme</b> (für die Vorschau, freiwillig).</p>
+      </div>
+    </div>
+    <div class="note" id="macNote">
+      <b data-i="mnH">Beim ersten Öffnen meldet macOS „kann nicht geöffnet werden“?</b>
+      <ol>
+        <li data-i="mn1">Klicke auf <b>„Fertig“</b> (nicht „In den Papierkorb“).</li>
+        <li data-i="mn2">Öffne <b>Systemeinstellungen → Datenschutz &amp; Sicherheit</b> und scrolle ganz nach unten.</li>
+        <li data-i="mn3">Klicke bei „SlimClick wurde blockiert“ auf <b>„Dennoch öffnen“</b> und bestätige mit deinem Passwort.</li>
+      </ol>
+      <span data-i="mn4">Das ist nur einmal nötig.</span>
+    </div>
+  </section>
+
+  <section class="features">
+    <div class="f"><b data-i="f1h">Keine App nötig</b><span data-i="f1p">Das Handy öffnet nur eine Webseite. Klappt mit jedem iPhone und Android.</span></div>
+    <div class="f"><b data-i="f2h">Laser &amp; Spotlight</b><span data-i="f2p">Auf die Vorschau tippen – der rote Punkt erscheint genau dort auf dem Beamer.</span></div>
+    <div class="f"><b data-i="f3h">Timer nur für dich</b><span data-i="f3p">Der Handy-Bildschirm blinkt 5, 2 und 1 Minute vor dem Ende. Das Publikum merkt nichts.</span></div>
+    <div class="f"><b data-i="f4h">Schul-WLAN?</b><span data-i="f4p">Mit dem Handy-Hotspot klappt es überall. Die App erklärt jeden Schritt.</span></div>
+    <div class="f"><b data-i="f5h">Sicher</b><span data-i="f5p">Einmal-Code im QR, jeder Befehl signiert. Weitere Geräte nur mit deiner Zustimmung.</span></div>
+    <div class="f"><b data-i="f6h">Privat</b><span data-i="f6p">Kein Konto, keine Cloud, kein Datenvolumen. Alles bleibt zwischen Handy und Laptop.</span></div>
+  </section>
+
+  <section class="faq">
+    <h2 data-i="faqH">Häufige Fragen</h2>
+    <details><summary data-i="q1q">Wie nutze ich mein Handy als Präsentations-Fernbedienung, ohne App?</summary><p data-i="q1a">Installiere SlimClick kostenlos auf deinem Laptop (Windows oder Mac). Es zeigt einen QR-Code. Scanne ihn mit der Handy-Kamera – es öffnet sich eine Webseite, die deine Folien steuert. Auf dem Handy wird nichts installiert.</p></details>
+    <details><summary data-i="q2q">Funktioniert es mit PowerPoint, Keynote, Google Slides und PDF?</summary><p data-i="q2a">Ja. SlimClick drückt dieselben Tasten wie ein normaler Presenter (Pfeiltasten). Damit klappt es mit allen Programmen, die darauf reagieren: PowerPoint, Keynote, Google Slides, LibreOffice Impress, Canva und PDF-Programme im Vollbild.</p></details>
+    <details><summary data-i="q3q">Mein Schul-WLAN blockiert die Verbindung. Was tun?</summary><p data-i="q3a">Viele Schul- und Firmennetze trennen Geräte voneinander. Schalte den Hotspot deines Handys ein und verbinde den Laptop damit. SlimClick passt den QR-Code von selbst an. Die Verbindung zwischen Handy und Laptop verbraucht kein Datenvolumen.</p></details>
+    <details><summary data-i="q4q">Kann jemand anderes im Raum mitsteuern?</summary><p data-i="q4a">Nein. Der QR-Code enthält einen geheimen Einmal-Schlüssel, der nie übers Netz geschickt wird. Jeder Befehl ist signiert. Ist schon ein Handy verbunden, musst du jedes weitere Gerät am Laptop zulassen.</p></details>
+    <details><summary data-i="q5q">Hat SlimClick einen Vortrags-Timer?</summary><p data-i="q5a">Ja. Countdown oder Stoppuhr direkt am Handy. Bei 5, 2 und 1 Minute Restzeit blinkt der Handy-Bildschirm kurz gelb, am Ende rot – unauffällig fürs Publikum.</p></details>
+    <details><summary data-i="q7q">Gibt es einen Laserpointer?</summary><p data-i="q7a">Ja. Tippe am Handy auf „Laser“ und dann auf die Folienvorschau – der rote Punkt erscheint genau dort auf dem Beamer. Mit „Spotlight“ bleibt nur eine Stelle hell.</p></details>
+    <details><summary data-i="q8q">Brauche ich Internet oder ein Konto?</summary><p data-i="q8a">Nein. Handy und Laptop verbinden sich direkt im WLAN oder über den Handy-Hotspot. Kein Konto, keine Cloud, kein Datenvolumen.</p></details>
+    <details><summary data-i="q9q">Ist SlimClick eine kostenlose Alternative zu einem Presenter?</summary><p data-i="q9a">Ja. Statt eines gekauften Presenters (Clicker) nimmst du einfach dein Handy – mit Extras, die viele Presenter nicht haben: Folienvorschau, Gehe-zu-Folie und Timer.</p></details>
+    <details><summary data-i="q6q">Ist SlimClick kostenlos?</summary><p data-i="q6a">Ja. Komplett kostenlos – ohne Werbung, ohne Konto, ohne Abo und ohne Datensammlung.</p></details>
+  </section>
+
+  <footer>
+    <span data-i="foot">SlimClick · Kostenlos für Windows und Mac</span>
+    · <a href="#" id="allReleases" style="color:inherit" data-i="releases">Alle Versionen</a>
+    <br /><a href="https://slimbitapps.github.io/" style="color:inherit">SlimBit Apps</a>
+    · <a href="https://slimbitapps.github.io/impressum.html" style="color:inherit" data-i="imprint">Impressum</a>
+    · <a href="https://slimbitapps.github.io/datenschutz.html" style="color:inherit" data-i="privacy">Datenschutz</a>
+  </footer>
+</div>
+
+<script>
+  // ============ EINSTELLUNGEN ============
+  const REPO = 'slimbitapps/SlimClick';  // GitHub "Besitzer/Repository"
+  const MAC_SIGNED = false;               // true, sobald die Mac-App bei Apple notarisiert ist
+  const WIN_SIGNED = false;               // true, sobald der Windows-Installer signiert ist
+  // =======================================
+
+  const base = `https://github.com/${REPO}/releases/latest/download/`;
+  const files = { win: base + 'SlimClick-Setup.exe', winZip: base + 'SlimClick-Windows-portable.zip', mac: base + 'SlimClick-Mac.dmg', macIntel: base + 'SlimClick-Mac-Intel.dmg' };
+  const en = {
+    allApps: 'All apps', releases: 'All versions', imprint: 'Imprint', privacy: 'Privacy',
+    title: 'Your phone as a presentation remote.',
+    sub: 'Scan the QR code and go – no app on your phone. Change slides, laser pointer, preview and a timer. For PowerPoint, Keynote, Google Slides and PDF. Free.',
+    h1h: 'Scan the QR code', h1p: 'Open SlimClick on your laptop and scan with your phone camera. A web page opens.',
+    h2h: 'Start your presentation', h2p: 'PowerPoint, Keynote, Google Slides or PDF in full screen – as always.',
+    h3h: 'Tap Next', h3p: 'Big “Next” button, laser on the preview, timer warns before the end.',
+    winH: 'How to install on Windows', w1h: 'Download', w1p: 'Click “Download” above. The file <b>SlimClick-Setup.exe</b> lands in your Downloads folder.',
+    w2h: 'Double-click', w2p: 'Open the file with a double-click. Installation runs by itself – nothing to choose.',
+    w3h: '“Allow access”', w3p: 'On first start the Windows firewall asks whether SlimClick may use the network. Click <b>“Allow access”</b> – otherwise your phone can’t find the laptop.',
+    wnH: 'If a blue window “Windows protected your PC” appears:', wn1: 'Click the text <b>“More info”</b>.', wn2: 'Click <b>“Run anyway”</b>.',
+    wn3: 'This happens with new programs Windows doesn’t know yet. No admin rights on a school PC? Use the <b>portable ZIP</b>: unzip, start SlimClick.exe.',
+    macH: 'How to install on a Mac', m1h: 'Download & open', m1p: 'Click “Download” above, then open <b>SlimClick-Mac.dmg</b> from your Downloads folder.',
+    m2h: 'Drag to “Applications”', m2p: 'Drag the <b>SlimClick icon</b> onto the <b>Applications</b> folder next to it. Then start it from Applications.',
+    m3h: 'Two permissions', m3p: 'The app guides you: <b>Accessibility</b> (to change slides, required) and <b>Screen Recording</b> (for the preview, optional).',
+    mnH: 'macOS says it “can’t be opened” the first time?', mn1: 'Click <b>“Done”</b> (not “Move to Trash”).',
+    mn2: 'Open <b>System Settings → Privacy & Security</b> and scroll all the way down.',
+    mn3: 'Next to “SlimClick was blocked”, click <b>“Open Anyway”</b> and confirm with your password.', mn4: 'Only needed once.',
+    f1h: 'No app needed', f1p: 'The phone just opens a web page. Works with any iPhone and Android.',
+    f2h: 'Laser & spotlight', f2p: 'Touch the preview – the red dot appears exactly there on the projector.',
+    f3h: 'A timer just for you', f3p: 'The phone screen flashes 5, 2 and 1 minute before the end. The audience notices nothing.',
+    f4h: 'School Wi-Fi?', f4p: 'With a phone hotspot it works anywhere. The app explains every step.',
+    f5h: 'Secure', f5p: 'One-time code in the QR, every command signed. More devices only with your approval.',
+    f6h: 'Private', f6p: 'No account, no cloud, no mobile data. Everything stays between phone and laptop.',
+    faqH: 'Frequently asked questions',
+    q1q: 'How can I use my phone as a presentation remote without an app?', q1a: 'Install the free SlimClick app on your laptop (Windows or Mac). It shows a QR code. Scan it with your phone camera – a web page opens that controls your slides. Nothing is installed on the phone.',
+    q2q: 'Does it work with PowerPoint, Keynote, Google Slides and PDF?', q2a: 'Yes. SlimClick presses the same keys as a normal clicker (arrow keys), so it works with every program that reacts to them: PowerPoint, Keynote, Google Slides, LibreOffice Impress, Canva and PDF viewers in full screen.',
+    q3q: 'My school Wi-Fi blocks the connection. What can I do?', q3a: 'Many school and company networks keep devices apart. Turn on your phone’s hotspot and connect the laptop to it. SlimClick updates the QR code by itself. The connection between phone and laptop uses no mobile data.',
+    q4q: 'Can someone else in the room take control?', q4a: 'No. The QR code contains a secret one-time key that is never sent over the network. Every command is signed. If a phone is already connected, any further device must be approved on the laptop.',
+    q5q: 'Does SlimClick have a presentation timer?', q5a: 'Yes. Countdown or stopwatch right on your phone. With 5, 2 and 1 minute left the phone screen briefly flashes yellow, red at the end – unnoticed by the audience.',
+    q7q: 'Is there a laser pointer?', q7a: 'Yes. Tap “Laser” on your phone, then touch the slide preview – the red dot appears exactly there on the projector. With “Spotlight” only one spot stays bright.',
+    q8q: 'Do I need internet or an account?', q8a: 'No. Phone and laptop connect directly over Wi-Fi or your phone’s hotspot. No account, no cloud, no mobile data.',
+    q9q: 'Is SlimClick a free alternative to a presentation clicker?', q9a: 'Yes. Instead of buying a clicker, just use your phone – with extras many clickers lack: slide preview, go to slide and a timer.',
+    q6q: 'Is SlimClick free?', q6a: 'Yes. Completely free – no ads, no account, no subscription and no data collection.',
+    foot: 'SlimClick · Free for Windows and Mac',
+  };
+  const de = {};
+  document.querySelectorAll('[data-i]').forEach((el) => (de[el.dataset.i] = el.innerHTML));
+
+  const ua = navigator.userAgent;
+  let os = /Mac|iPhone|iPad/.test(ua) ? 'mac' : 'win';
+  let lang = (navigator.language || 'de').startsWith('de') ? 'de' : 'en';
+
+  function render() {
+    const d = lang === 'de' ? de : en;
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-i]').forEach((el) => (el.innerHTML = d[el.dataset.i] ?? el.innerHTML));
+    document.getElementById('lang').textContent = lang === 'de' ? 'English' : 'Deutsch';
+    const isMac = os === 'mac';
+    document.getElementById('win').hidden = isMac;
+    document.getElementById('mac').hidden = !isMac;
+    document.getElementById('tabWin').className = isMac ? '' : 'on';
+    document.getElementById('tabMac').className = isMac ? 'on' : '';
+    document.getElementById('macNote').hidden = MAC_SIGNED;
+    document.getElementById('winNote').hidden = WIN_SIGNED;
+    document.getElementById('dl').href = files[os];
+    document.getElementById('dlText').textContent = (lang === 'de' ? 'Herunterladen für ' : 'Download for ') + (isMac ? 'Mac' : 'Windows');
+    document.getElementById('dlSub').textContent = isMac
+      ? (lang === 'de' ? 'macOS 12 oder neuer · Apple-Chip (M1–M4)' : 'macOS 12 or later · Apple silicon (M1–M4)')
+      : (lang === 'de' ? 'Windows 10 und 11 · 64 Bit' : 'Windows 10 and 11 · 64-bit');
+    const de_ = lang === 'de';
+    document.getElementById('other').innerHTML = isMac
+      ? `${de_ ? 'Älterer Mac mit Intel-Prozessor? ' : 'Older Mac with Intel processor? '}<a href="${files.macIntel}">${de_ ? 'Intel-Version' : 'Intel version'}</a> · ${de_ ? 'Anderes System? ' : 'Other system? '}<a href="${files.win}">Windows</a>`
+      : `${de_ ? 'Ohne Installation: ' : 'No install: '}<a href="${files.winZip}">${de_ ? 'portable ZIP' : 'portable ZIP'}</a> · ${de_ ? 'Anderes System? ' : 'Other system? '}<a href="${files.mac}">Mac</a>`;
+    document.getElementById('allReleases').href = `https://github.com/${REPO}/releases`;
+  }
+  document.getElementById('lang').onclick = () => { lang = lang === 'de' ? 'en' : 'de'; render(); };
+  document.getElementById('tabWin').onclick = () => { os = 'win'; render(); };
+  document.getElementById('tabMac').onclick = () => { os = 'mac'; render(); };
+  render();
+</script>
+</body>
+</html>

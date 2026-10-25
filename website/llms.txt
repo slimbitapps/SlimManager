@@ -1,0 +1,6 @@
+# SlimClick
+
+> Free presentation remote for Windows and Mac: scan a QR code with any phone (no app install) and control PowerPoint, Keynote, Google Slides, LibreOffice Impress, Canva or PDF. Laser pointer and spotlight on the projector, live slide preview, go to slide, black screen, presentation timer with a silent screen-flash warning. Secure one-time pairing; works on school Wi-Fi via a phone hotspot. No account, no cloud. By SlimBit Apps.
+
+- [Download](https://slimbitapps.github.io/SlimClick/)
+- [GitHub](https://github.com/slimbitapps/SlimClick)
