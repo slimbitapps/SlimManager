@@ -1,6 +1,6 @@
-# SlimClick
+# SlimManager
 
-> Free presentation remote for Windows and Mac: scan a QR code with any phone (no app install) and control PowerPoint, Keynote, Google Slides, LibreOffice Impress, Canva or PDF. Laser pointer and spotlight on the projector, live slide preview, go to slide, black screen, presentation timer with a silent screen-flash warning. Secure one-time pairing; works on school Wi-Fi via a phone hotspot. No account, no cloud. By SlimBit Apps.
+> Free, lightweight task manager for gamers on Windows and Mac. Customizable live dashboard (CPU, GPU, RAM, network, drives) with 7 skins and your own background; tap any tile to see which app uses how much. Game Boost freezes background clutter and prioritizes the game, with an exceptions list (headset software, Discord, OBS, anti-cheat always safe). Focus mode for quiet work (calmer fans, Windows Update paused). Live stats, process list (sort by CPU/GPU/RAM) and boost control on your phone or tablet via QR code – no app install, secure pairing. Mini overlay. Under 1 % CPU in the background. No account, no ads, no cloud. By SlimBit Apps.
 
-- [Download](https://slimbitapps.github.io/SlimClick/)
-- [GitHub](https://github.com/slimbitapps/SlimClick)
+- [Download](https://slimbitapps.github.io/SlimManager/)
+- [GitHub](https://github.com/slimbitapps/SlimManager)
