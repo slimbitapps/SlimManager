@@ -46,6 +46,13 @@ kein Konto, keine Werbung, alles lokal.
 - Mini-Anzeige (immer im Vordergrund), Warnungen (Temperatur/RAM), Taskleisten-Symbol, im Hintergrund weiterlaufen
 - Deutsch/Englisch, hell/dunkel, Einfach/Profi, Einführung beim ersten Start
 
+## Tauri-Ausgabe (Zweig "tauri")
+
+- Hülle in Rust (src-tauri/), Kern als eigenständiges Programm (core/main.cjs → scripts/build-core.sh), Oberfläche unverändert
+- Gemessen (Mac, fertige App): ca. 220 MB statt 480 MB, DMG 39 MB statt 107 MB, CPU im Vordergrund ca. 2–3 % eines Kerns
+- Noch offen: Windows-Build (geht nur auf Windows bzw. GitHub Actions), Mini-Anzeige/Taskleiste/Tastenkürzel von Hand prüfen,
+  danach Electron-Teile entfernen
+
 ## Noch auf echtem Windows zu prüfen (konnte am Mac nicht getestet werden)
 
 - Einfrieren/Auftauen über den PowerShell-Helfer (NtSuspendProcess), CPU-Kerne, RAM freigeben

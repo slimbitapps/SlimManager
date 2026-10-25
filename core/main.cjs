@@ -18,21 +18,21 @@ const crypto = require('node:crypto');
 const { execFile } = require('node:child_process');
 const { WebSocketServer } = require('ws');
 const QRCode = require('qrcode');
-const C = path.join(__dirname, '..', 'electron', 'core');
-const { SettingsStore } = require(path.join(C, 'settings.cjs'));
-const { Pairing } = require(path.join(C, 'auth.cjs'));
-const { RemoteServer } = require(path.join(C, 'server.cjs'));
-const { listAddresses, pickAddress } = require(path.join(C, 'network.cjs'));
-const { Monitor } = require(path.join(C, 'monitor.cjs'));
-const { normalize, group, isProtected, setPriority, killPids, LEVELS } = require(path.join(C, 'procs.cjs'));
-const { Boost, detectGame } = require(path.join(C, 'boost.cjs'));
-const { Tweaks } = require(path.join(C, 'tweaks.cjs'));
-const { cleanLayout, cleanLook } = require(path.join(C, 'layout.cjs'));
+// Feste Pfade (damit alles in EIN Programm gepackt werden kann)
+const { SettingsStore } = require('../electron/core/settings.cjs');
+const { Pairing } = require('../electron/core/auth.cjs');
+const { RemoteServer } = require('../electron/core/server.cjs');
+const { listAddresses, pickAddress } = require('../electron/core/network.cjs');
+const { Monitor } = require('../electron/core/monitor.cjs');
+const { normalize, group, isProtected, setPriority, killPids, LEVELS } = require('../electron/core/procs.cjs');
+const { Boost, detectGame } = require('../electron/core/boost.cjs');
+const { Tweaks } = require('../electron/core/tweaks.cjs');
+const { cleanLayout, cleanLook } = require('../electron/core/layout.cjs');
 const { appIcon } = require('./icons.cjs');
 
 // Wächter-Modus: dieselbe Datei/Programm, nur mit anderer Aufgabe (siehe tweaks.cjs)
 if (process.argv.includes('--watchdog')) {
-  require(path.join(C, 'watchdog.cjs'));
+  require('../electron/core/watchdog.cjs');
   return;
 }
 
