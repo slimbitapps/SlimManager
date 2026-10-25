@@ -7,7 +7,7 @@
 
 const WIDGET_TYPES = ['metric', 'cores', 'procs', 'clock', 'net', 'disks', 'boost', 'system', 'battery', 'text'];
 const METRICS = ['cpu', 'ram', 'gpu', 'gpuMem', 'cpuTemp', 'gpuTemp', 'netDown', 'netUp', 'diskRead', 'diskWrite', 'swap', 'cpuSpeed', 'battery', 'procCount'];
-const STYLES = ['ring', 'bar', 'chart', 'number'];
+const STYLES = ['ring', 'speedo', 'bar', 'chart', 'number'];
 const SIZES = ['s', 'w', 't', 'm', 'l', 'xl'];
 const SKINS = ['neon', 'glass', 'clean', 'classic', 'terminal', 'sunset'];
 const BGS = ['none', 'aurora', 'grid', 'carbon', 'waves', 'nebula', 'image'];
@@ -74,6 +74,7 @@ function cleanLook(l, d) {
     font: pick(l.font, FONTS, d.font),
     rgb: !!l.rgb,
     anim: l.anim === undefined ? d.anim : !!l.anim,
+    decimals: Math.round(num(l.decimals, 0, 2, d.decimals ?? 0)),
   };
 }
 

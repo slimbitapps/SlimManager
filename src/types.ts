@@ -36,7 +36,7 @@ export interface Settings {
   boost: { auto: boolean; lowerOthers: boolean; raiseGame: boolean; closeList: string[]; games: string[]; hotkey: boolean };
   overlay: OverlayCfg;
   alerts: { enabled: boolean; cpuTemp: number; gpuTemp: number; ram: number };
-  app: { closeToTray: boolean; gpu: boolean };
+  app: { closeToTray: boolean; gpu: boolean; rate: number; liveInGame: boolean };
   devices: Device[];
 }
 
@@ -83,7 +83,7 @@ export interface Api {
   setSettings(p: Partial<Settings> | Record<string, unknown>): Promise<Settings>;
   appInfo(): Promise<AppInfo>;
   sysStatic(): Promise<SysInfo | null>;
-  getStats(): Promise<{ snap: Stats | null; history: History }>;
+  getStats(): Promise<{ snap: Stats | null; history: History; lively: boolean }>;
   watchProcs(on: boolean): Promise<ProcData>;
   killGroup(id: string): Promise<Result>;
   killPid(pid: number): Promise<Result>;
@@ -115,6 +115,8 @@ export interface Api {
   setTheme(theme: string): Promise<void>;
   log(...a: unknown[]): Promise<void>;
   relaunch(): Promise<void>;
+  displays(): Promise<{ id: string; label: string; primary: boolean; current: boolean; w: number; h: number }[]>;
+  setFullscreen(on: boolean, displayId?: string): Promise<boolean>;
   gpuStatus(): Promise<string>;
   platform: string;
   on(channel: string, cb: (payload: any) => void): () => void;

@@ -35,12 +35,14 @@ export function bits(v: number | null | undefined, locale = 'en'): string {
   return `${n.toLocaleString(locale, { maximumFractionDigits: n >= 100 || i === 0 ? 0 : 1 })} ${units[i]}`;
 }
 
-export function pct(v: number | null | undefined): string {
-  return v === null || v === undefined || !Number.isFinite(v) ? '–' : `${Math.round(v)} %`;
+const fixed = (v: number, dec: number, locale: string) => v.toLocaleString(locale, { minimumFractionDigits: dec, maximumFractionDigits: dec });
+
+export function pct(v: number | null | undefined, dec = 0, locale = 'en'): string {
+  return v === null || v === undefined || !Number.isFinite(v) ? '–' : `${fixed(v, dec, locale)} %`;
 }
 
-export function temp(v: number | null | undefined): string {
-  return v === null || v === undefined || !Number.isFinite(v) ? '–' : `${Math.round(v)} °C`;
+export function temp(v: number | null | undefined, dec = 0, locale = 'en'): string {
+  return v === null || v === undefined || !Number.isFinite(v) ? '–' : `${fixed(v, dec, locale)} °C`;
 }
 
 /** Sekunden → "3 T 4 Std" / "1:05 Std" / "12 Min" */

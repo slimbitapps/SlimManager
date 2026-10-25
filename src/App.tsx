@@ -18,6 +18,7 @@ export function App() {
   const showIntro = useStore((s) => s.showIntro);
   const dialog = useStore((s) => s.dialog);
   const view = useStore((s) => s.view);
+  const fullscreen = useStore((s) => s.fullscreen);
   // Sprache/Theme-Wechsel sollen alles neu zeichnen
   useStore((s) => s.settings?.prefs);
   if (!ready) return null;
@@ -26,8 +27,8 @@ export function App() {
       {!onboarded || showIntro ? (
         <Onboarding />
       ) : (
-        <div className="shell">
-          <Sidebar />
+        <div className={`shell ${fullscreen ? 'fs' : ''}`}>
+          {!fullscreen && <Sidebar />}
           <main className="main">
             {view === 'dashboard' && <DashboardView />}
             {view === 'processes' && <Processes />}

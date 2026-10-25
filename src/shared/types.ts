@@ -115,12 +115,13 @@ export interface Look {
   font: Font;
   rgb: boolean;
   anim: boolean;
+  decimals: number;
 }
 
 export type WidgetType = 'metric' | 'cores' | 'procs' | 'clock' | 'net' | 'disks' | 'boost' | 'system' | 'battery' | 'text';
 export type MetricId =
   | 'cpu' | 'ram' | 'gpu' | 'gpuMem' | 'cpuTemp' | 'gpuTemp' | 'netDown' | 'netUp' | 'diskRead' | 'diskWrite' | 'swap' | 'cpuSpeed' | 'battery' | 'procCount';
-export type WStyle = 'ring' | 'bar' | 'chart' | 'number';
+export type WStyle = 'ring' | 'speedo' | 'bar' | 'chart' | 'number';
 export type WSize = 's' | 'w' | 't' | 'm' | 'l' | 'xl';
 
 export interface Widget {

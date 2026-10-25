@@ -35,7 +35,7 @@ async function gpuAvg(secs) {
   const baseline = process.platform === 'darwin' ? await gpuAvg(Number(secs)) : null;
   const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'slimmanager-perf-'));
   // Einführung überspringen, gewünschten Skin setzen
-  fs.writeFileSync(path.join(userData, 'settings.json'), JSON.stringify({ onboarded: true, prefs: { lang: 'de', theme: 'dark', mode: 'simple' }, look: { skin, bg, rgb: process.env.PERF_RGB === '1', anim: process.env.PERF_ANIM === '1' } }));
+  fs.writeFileSync(path.join(userData, 'settings.json'), JSON.stringify({ onboarded: true, prefs: { lang: 'de', theme: 'dark', mode: 'simple' }, look: { skin, bg, rgb: process.env.PERF_RGB === '1', anim: process.env.PERF_ANIM !== '0', decimals: Number(process.env.PERF_DEC || 0) }, app: { rate: Number(process.env.PERF_RATE || 1000) } }));
   const app = await electron.launch({
     executablePath: process.env.SLIMMANAGER_EXE || require('electron'),
     args: process.env.SLIMMANAGER_EXE ? [] : [ROOT],
@@ -62,7 +62,7 @@ async function gpuAvg(secs) {
   const avg = Object.fromEntries(Object.entries(sum).map(([k, v]) => [k, Math.round((v / n) * 10) / 10]));
   const gpuRender = (avg.GPU || 0) + (avg.Tab || 0);
   const gpuOn = await app.evaluate(({ app }) => app.getGPUFeatureStatus().gpu_compositing);
-  console.log(`${process.env.PERF_MIN === '1' ? '[minimiert] ' : ''}Skin ${skin}/${bg} · GPU-Beschleunigung: ${gpuOn} · Durchschnitt (% eines Kerns):`, avg, `→ Grafik+Fenster: ${gpuRender.toFixed(1)} %`);
+  console.log(`${process.env.PERF_MIN === '1' ? '[minimiert] ' : ''}Rate ${process.env.PERF_RATE || 1000} ms · Skin ${skin}/${bg} · GPU-Beschleunigung: ${gpuOn} · Durchschnitt (% eines Kerns):`, avg, `→ Grafik+Fenster: ${gpuRender.toFixed(1)} %`);
   await app.close();
   if (process.env.PERF_MAX && gpuRender > Number(process.env.PERF_MAX)) {
     console.error(`✗ zu hoch (Grenze ${process.env.PERF_MAX} %)`);

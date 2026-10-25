@@ -40,6 +40,8 @@ contextBridge.exposeInMainWorld('api', {
   setTheme: invoke('win:theme'),
   log: invoke('app:log'),
   relaunch: invoke('app:relaunch'),
+  displays: invoke('displays'),
+  setFullscreen: invoke('win:fullscreen'),
   gpuStatus: invoke('app:gpu'),
   platform: process.platform,
   on(channel, cb) {

@@ -85,9 +85,27 @@ function syncWindow() {
   send('sync', { snap: monitor.snap, history: monitor.historyOf(300) });
   if (rendererWantsProcs && procCache.at) send('procs', procCache);
 }
-/** Misst schnell, solange jemand zuschaut (Fenster, Handy, Mini-Anzeige) – sonst im Sparmodus */
+/**
+ * Wie lebendig soll die Anzeige sein?
+ *  - "lebendig" (flüssig, gewählte Rate, Zähl-Animation): Fenster im Vordergrund – oder sichtbar/Handy, solange kein Spiel läuft
+ *  - Sparmodus (1 s, keine Animation): Spiel läuft oder Boost aktiv und SlimManager nicht im Vordergrund
+ *  - Ruhe (5 s): niemand schaut zu
+ */
+let lastGame = null;
+let lively = null;
 function updateLive() {
-  monitor.setLive(winVisible() || (server ? server.clients().length : 0) > 0 || !!(overlay && !overlay.isDestroyed()));
+  const visible = winVisible();
+  const phones = server ? server.clients().length : 0;
+  const gaming = boost.active || !!lastGame;
+  const focused = visible && win.isFocused();
+  const on = focused || ((visible || phones > 0) && (!gaming || settings.data.app.liveInGame));
+  const live = visible || phones > 0 || !!(overlay && !overlay.isDestroyed());
+  monitor.setLive(live, on ? settings.data.app.rate : 1000);
+  if (on !== lively) {
+    lively = on;
+    send('lively', on);
+    server?.broadcast({ t: 'lively', on });
+  }
 }
 function isDark(theme) {
   return theme === 'dark' || (theme !== 'light' && nativeTheme.shouldUseDarkColors);
@@ -150,6 +168,9 @@ function createWindow() {
   win.on('resized', remember);
   win.on('moved', remember);
   for (const ev of ['show', 'restore', 'focus']) win.on(ev, syncWindow);
+  win.on('blur', () => updateLive());
+  win.on('enter-full-screen', () => send('fullscreen', true));
+  win.on('leave-full-screen', () => send('fullscreen', false));
   for (const ev of ['hide', 'minimize']) win.on(ev, () => (updateLive(), updateProcWanted()));
   win.on('close', (e) => {
     // "Im Hintergrund weiterlaufen": Fenster nur verstecken, Taskleisten-Symbol bleibt
@@ -260,6 +281,7 @@ async function startServer() {
     server.sendTo(deviceId, { t: 'history', h: monitor.historyOf(120) });
     if (monitor.snap) server.sendTo(deviceId, { t: 'stats', s: monitor.snap });
     server.sendTo(deviceId, { t: 'boost', b: boostState() });
+    server.sendTo(deviceId, { t: 'lively', on: !!lively });
     const bg = readBackground();
     if (bg && settings.data.look.bg === 'image') server.sendTo(deviceId, { t: 'bg', img: bg });
   });
@@ -325,7 +347,12 @@ function onProcs(list) {
   if (server && server.subscribers('procs')) server.broadcast({ t: 'procs', p: phoneGroups(groups) }, 'procs');
   boost.follow(flat);
   autoBoost(groups);
-  send('game', detectGame(groups));
+  const game = detectGame(groups);
+  if (game !== lastGame) {
+    lastGame = game;
+    updateLive();
+  }
+  send('game', game);
 }
 
 /** Für das Handy: nur das Nötigste – alle Apps/Spiele/Hintergrund, vom System nur die 30 aktivsten. */
@@ -432,6 +459,7 @@ function autoBoost(groups) {
 
 boost.on('change', (st) => {
   ownPriority(st.active);
+  setTimeout(updateLive, 0);
   send('boost', st);
   server?.broadcast({ t: 'boost', b: st });
   buildTrayMenu();
@@ -601,6 +629,7 @@ handle('settings:set', async (partial) => {
     updateProcWanted();
   }
   if (partial && partial.prefs) buildTrayMenu();
+  if (partial && partial.app) updateLive();
   if (JSON.stringify(settings.data.network) !== before) {
     if (partial.network && partial.network.port !== undefined && server) {
       await server.stop();
@@ -617,7 +646,7 @@ handle('app:info', () => ({
   locale: app.getLocale(),
 }));
 handle('sys:static', () => monitor.static);
-handle('stats:get', () => ({ snap: monitor.snap, history: monitor.historyOf(300) }));
+handle('stats:get', () => ({ snap: monitor.snap, history: monitor.historyOf(300), lively: !!lively }));
 handle('procs:watch', (on) => {
   rendererWantsProcs = !!on;
   updateProcWanted();
@@ -727,6 +756,30 @@ handle('app:relaunch', () => {
   app.exit(0);
 });
 handle('app:gpu', () => app.getGPUFeatureStatus().gpu_compositing);
+handle('displays', () => {
+  const primary = screen.getPrimaryDisplay().id;
+  const current = win ? screen.getDisplayMatching(win.getBounds()).id : primary;
+  return screen.getAllDisplays().map((d, i) => ({ id: String(d.id), label: d.label || `Display ${i + 1}`, primary: d.id === primary, current: d.id === current, w: d.size.width, h: d.size.height }));
+});
+/** Vollbild – auf Wunsch auf einem anderen Bildschirm (z. B. Zweitmonitor neben dem Spiel) */
+handle('win:fullscreen', async (on, displayId) => {
+  if (!win || win.isDestroyed()) return false;
+  if (!on) {
+    win.setFullScreen(false);
+    return false;
+  }
+  const target = displayId ? screen.getAllDisplays().find((d) => String(d.id) === String(displayId)) : null;
+  if (target && screen.getDisplayMatching(win.getBounds()).id !== target.id) {
+    if (win.isFullScreen()) {
+      win.setFullScreen(false);
+      await new Promise((r) => setTimeout(r, 700));
+    }
+    const wa = target.workArea;
+    win.setBounds({ x: wa.x + 40, y: wa.y + 40, width: Math.min(1200, wa.width - 80), height: Math.min(800, wa.height - 80) });
+  }
+  win.setFullScreen(true);
+  return true;
+});
 
 // ------------------------------------------------------------------ Tastenkürzel (auch im Spiel)
 function registerHotkeys() {

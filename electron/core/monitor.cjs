@@ -54,7 +54,6 @@ class Monitor extends EventEmitter {
     this.procsAt = 0;
     this.procLevel = 'off'; // 'fast' = alle 2 s, 'slow' = alle 10 s (Spiel-Erkennung), 'off' = gar nicht
     this.live = true; // schaut gerade jemand zu?
-    this.tickN = 0;
     this.slow = { disks: [], battery: null, cpuTemp: null, procCount: null };
     this.gpu = { util: null, temp: null, memUsed: null, memTotal: null };
     this.prevNet = null;
@@ -95,13 +94,18 @@ class Monitor extends EventEmitter {
     }, this.live ? this.interval : 5000);
   }
 
-  /** Schaut jemand zu? Ohne Zuschauer misst SlimManager seltener und fragt die GPU gar nicht ab. */
-  setLive(on) {
+  /**
+   * Schaut jemand zu? Ohne Zuschauer misst SlimManager alle 5 s und fragt die GPU gar nicht ab.
+   * interval = gewünschte Aktualisierung, solange jemand hinschaut (250 / 500 / 1000 ms).
+   */
+  setLive(on, interval = this.interval) {
     on = !!on;
-    if (on === this.live) return;
+    const faster = on && (!this.live || interval < this.interval);
+    const changed = on !== this.live;
+    this.interval = interval;
     this.live = on;
-    if (this.platform === 'win32') on ? this.startWinGpu() : this.stopWinGpu();
-    if (on && this.running) this.loop(); // sofort wieder schnell
+    if (changed && this.platform === 'win32') on ? this.startWinGpu() : this.stopWinGpu();
+    if (faster && this.running) this.loop(); // sofort im neuen Takt
   }
 
   stop() {
@@ -164,12 +168,13 @@ class Monitor extends EventEmitter {
       const win = this.platform === 'win32';
       // Windows: Netzwerk/Speicher kosten dort je eine WMI-Abfrage → Netzwerk nur jede 2. Messung,
       // RAM direkt vom System (Auslagerung kommt mit den langsamen Werten)
-      const netNow = !win || !this.live || this.tickN++ % 2 === 0;
+      // Netzwerk höchstens 1× pro Sekunde (Windows: höchstens alle 2 s) – auch wenn die Anzeige schneller läuft
+      const netNow = !this.prevNet || Date.now() - this.prevNet.t >= (win ? 1900 : 950);
       const [load, mem, net, disk, speed] = await Promise.all([
         safe(() => this.si.currentLoad()),
         win ? Promise.resolve({ total: os.totalmem(), active: os.totalmem() - os.freemem(), swaptotal: this.slow.swapTotal, swapused: this.slow.swapUsed }) : safe(() => this.si.mem()),
         netNow ? safe(() => this.si.networkStats('*')) : Promise.resolve(null),
-        win ? Promise.resolve(null) : safe(() => this.si.disksIO()),
+        win || (this.prevDisk && Date.now() - this.prevDisk.t < 950) ? Promise.resolve(null) : safe(() => this.si.disksIO()),
         safe(() => this.si.cpuCurrentSpeed()),
       ]);
       const now = Date.now();
@@ -187,8 +192,8 @@ class Monitor extends EventEmitter {
         this.prevNet = { rx, tx, t: now };
       }
       // Festplatte: gelesene/geschriebene Bytes (wenn das System sie liefert), sonst Vorgänge
-      let diskRead = null;
-      let diskWrite = null;
+      let diskRead = disk ? null : this.snap?.diskRead ?? null;
+      let diskWrite = disk ? null : this.snap?.diskWrite ?? null;
       if (disk) {
         const r = disk.rIO ?? null;
         const w = disk.wIO ?? null;
@@ -227,7 +232,11 @@ class Monitor extends EventEmitter {
         procCount: this.slow.procCount,
         uptime: Math.round(os.uptime()),
       };
-      for (const k of HISTORY_KEYS) this.history[k].push(snap[k]);
+      // Verlauf immer im Sekundentakt (auch bei schnellerer Anzeige), damit Diagramme 5 Minuten zeigen
+      if (!this.histAt || now - this.histAt >= 950) {
+        this.histAt = now;
+        for (const k of HISTORY_KEYS) this.history[k].push(snap[k]);
+      }
       this.snap = snap;
       this.emit('stats', snap);
     } finally {

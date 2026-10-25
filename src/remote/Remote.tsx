@@ -11,7 +11,7 @@ import { t, setLang, getLocale, type TKey } from '../i18n';
 
 // ------------------------------------------------------------------ Zustand der Seite
 const HISTORY_KEYS = ['cpu', 'ram', 'gpu', 'gpuMem', 'cpuTemp', 'gpuTemp', 'netDown', 'netUp', 'diskRead', 'diskWrite', 'swap'] as const;
-const DEFAULT_LOOK: Look = { skin: 'neon', accent: '', bg: 'aurora', bgImage: false, dim: 0.45, blur: 0, cardAlpha: 0.72, radius: 16, font: 'system', rgb: false, anim: false };
+const DEFAULT_LOOK: Look = { skin: 'neon', accent: '', bg: 'aurora', bgImage: false, dim: 0.45, blur: 0, cardAlpha: 0.72, radius: 16, font: 'system', rgb: false, anim: true, decimals: 0 };
 
 interface S {
   status: Status;
@@ -21,6 +21,7 @@ interface S {
   layout: Widget[] | null;
   control: boolean;
   overlay: boolean;
+  lively: boolean;
   sys: SysInfo | null;
   stats: Stats | null;
   history: History;
@@ -36,6 +37,7 @@ const useR = create<S>(() => ({
   layout: null,
   control: false,
   overlay: false,
+  lively: true,
   sys: null,
   stats: null,
   history: {},
@@ -47,6 +49,7 @@ const useR = create<S>(() => ({
 const set = useR.setState;
 
 let toastTimer = 0;
+let histAt = 0;
 function toast(text: string) {
   set({ toast: text });
   clearTimeout(toastTimer);
@@ -66,6 +69,12 @@ const conn = new Conn({
         const s: Stats = m.s;
         const h = useR.getState().history;
         const next: History = {};
+        // Verlauf im Sekundentakt, auch wenn die Werte schneller kommen
+        if (s.t - histAt < 950) {
+          set({ stats: s });
+          break;
+        }
+        histAt = s.t;
         for (const k of HISTORY_KEYS) next[k] = (h[k] || []).concat([s[k] ?? null]).slice(-120);
         set({ stats: s, history: next });
         break;
@@ -78,6 +87,9 @@ const conn = new Conn({
         break;
       case 'boost':
         set({ boost: m.b });
+        break;
+      case 'lively':
+        set({ lively: !!m.on });
         break;
       case 'bg':
         set({ bg: typeof m.img === 'string' && m.img.startsWith('data:image/') ? m.img : null });
@@ -168,6 +180,8 @@ function useData(): WidgetData {
   const procs = useR((s) => s.procs);
   const boost = useR((s) => s.boost);
   const control = useR((s) => s.control);
+  const lively = useR((s) => s.lively && s.look.anim);
+  const decimals = useR((s) => s.look.decimals ?? 0);
   const game = useMemo(() => (procs || []).find((p) => p.kind === 'game')?.name || null, [procs]);
   return useMemo(
     () => ({
@@ -177,9 +191,11 @@ function useData(): WidgetData {
       procs,
       boost,
       game,
+      lively,
+      decimals,
       onBoost: control ? (on: boolean) => (on ? game && conn.send('boost', { app: game }) : conn.send('unboost')) : undefined,
     }),
-    [stats, history, sys, procs, boost, game, control],
+    [stats, history, sys, procs, boost, game, control, lively, decimals],
   );
 }
 

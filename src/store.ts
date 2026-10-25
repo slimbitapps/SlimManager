@@ -28,6 +28,9 @@ interface State {
   view: View;
   editing: boolean;
   editTarget: 'pc' | 'phone';
+  fullscreen: boolean;
+  /** flüssige Anzeige mit Zähl-Animation? (aus, solange gezockt wird) */
+  lively: boolean;
   approvals: { id: string; name: string }[];
   dialog: Dialog;
   showIntro: boolean;
@@ -49,6 +52,8 @@ export const useStore = create<State>(() => ({
   view: 'dashboard',
   editing: false,
   editTarget: 'pc',
+  fullscreen: false,
+  lively: true,
   approvals: [],
   dialog: null,
   showIntro: false,
@@ -69,8 +74,12 @@ export function applyTheme(theme: Prefs['theme']) {
   window.api.setTheme(theme);
 }
 
+let histAt = 0;
 function pushHistory(s: Stats) {
   const h = get().history;
+  // Verlauf im Sekundentakt, auch wenn die Anzeige schneller aktualisiert
+  if (s.t - histAt < 950) return h;
+  histAt = s.t;
   const next: History = {};
   for (const k of HISTORY_KEYS) {
     const arr = (h[k] || []).concat([s[k] ?? null]);
@@ -95,7 +104,8 @@ export async function init() {
   setLang(settings.prefs.lang as Lang);
   applyTheme(settings.prefs.theme);
   document.documentElement.classList.add('platform-' + window.api.platform);
-  set({ ready: true, settings, info, approvals, stats: st.snap, history: st.history, sys, boost, game, image });
+  set({ ready: true, settings, info, approvals, stats: st.snap, history: st.history, lively: st.lively, sys, boost, game, image });
+  window.api.on('lively', (lively: boolean) => set({ lively }));
 
   window.api.on('remote:update', (info: RemoteInfo) => set({ info }));
   window.api.on('stats', async (s: Stats) => {
@@ -111,6 +121,14 @@ export async function init() {
   window.api.on('game', (game: string | null) => get().game !== game && set({ game }));
   window.api.on('settings', (settings: Settings) => set({ settings }));
   window.api.on('navigate', (view: View) => set({ view }));
+  window.api.on('fullscreen', (fullscreen: boolean) => set({ fullscreen, view: fullscreen ? 'dashboard' : get().view, editing: fullscreen ? false : get().editing }));
+  // F11 = Vollbild-Dashboard, Esc = zurück
+  addEventListener('keydown', (e) => {
+    if (e.key === 'F11') {
+      e.preventDefault();
+      toggleFullscreen();
+    } else if (e.key === 'Escape' && get().fullscreen && !get().dialog) window.api.setFullscreen(false);
+  });
   window.api.on('phone-action', (a: { name: string; c: string; ok: boolean }) => toast(t('toast.phone', { name: a.name, what: t(`phone.cmd.${a.c}` as TKey) }), a.ok ? 'info' : 'error'));
   window.api.on('approval', (req: { id: string; name: string }) => set({ approvals: [...get().approvals.filter((a) => a.id !== req.id), req] }));
   window.api.on('approval-done', (id: string) => set({ approvals: get().approvals.filter((a) => a.id !== id) }));
@@ -137,6 +155,10 @@ export async function finishOnboarding() {
 
 export function setView(view: View) {
   set({ view, editing: false });
+}
+export function toggleFullscreen(displayId?: string) {
+  set({ view: 'dashboard', editing: false });
+  return window.api.setFullscreen(!get().fullscreen || !!displayId, displayId);
 }
 export function setEditing(editing: boolean) {
   set({ editing, editTarget: editing ? get().editTarget : 'pc' });

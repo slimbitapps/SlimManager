@@ -373,7 +373,7 @@
 .style-picks,
 .size-picks {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 6px;
 }
 .size-picks {
@@ -1413,3 +1413,56 @@
   }
 }
 
+
+/* ---------------------------------------------------------------- Vollbild */
+.shell.fs {
+  grid-template-columns: minmax(0, 1fr);
+}
+.dash-view.fs {
+  position: relative;
+}
+.fs-exit {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.dash-view.fs:hover .fs-exit {
+  opacity: 0.9;
+}
+.menu-wrap {
+  position: relative;
+}
+.pop-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  min-width: 240px;
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line-2);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+}
+.pop-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+}
+.pop-menu button:hover {
+  background: var(--surface-2);
+}

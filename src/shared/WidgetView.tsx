@@ -2,7 +2,7 @@
  * Ein Widget zeichnen (Ring, Balken, Diagramm, Zahl, Prozessliste, Uhr …).
  * Wird im PC-Fenster UND auf der Handy-Seite benutzt – deshalb keine Abhängigkeit zum Electron-Fenster.
  */
-import { memo, useEffect, useState, type ReactNode } from 'react';
+import { memo, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { BoostState, History, ProcGroup, Stats, SysInfo, Widget } from './types';
 import { METRIC } from './widgets';
 import { bits, bytes, duration, pct, split } from './format';
@@ -17,6 +17,48 @@ export interface WidgetData {
   game: string | null;
   /** Boost starten/stoppen – fehlt, wenn Steuern nicht erlaubt ist */
   onBoost?: (on: boolean) => void;
+  /** flüssige Anzeige: Werte gleiten (aus beim Zocken → keine Last) */
+  lively?: boolean;
+  /** Nachkommastellen für % und °C */
+  decimals?: number;
+  /** wie oft neue Werte kommen (ms) – bestimmt die Dauer der Animation */
+  rate?: number;
+}
+
+/**
+ * Zahl weich zum neuen Wert gleiten lassen (nur im "lebendigen" Modus, sonst sofort).
+ * Läuft nur kurz nach jeder neuen Messung – danach zeichnet nichts mehr.
+ */
+export function useTween(target: number | null, ms: number, on: boolean): number | null {
+  const [v, setV] = useState(target);
+  const cur = useRef(target);
+  useEffect(() => {
+    if (!on || target === null || cur.current === null || ms <= 0 || Math.abs(target - cur.current) < 1e-6) {
+      cur.current = target;
+      setV(target);
+      return;
+    }
+    const from = cur.current;
+    const start = performance.now();
+    let raf = 0;
+    let last = 0;
+    const step = (now: number) => {
+      const k = Math.min(1, (now - start) / ms);
+      // höchstens ~30 Bilder pro Sekunde – sieht flüssig aus und kostet die Hälfte
+      if (k < 1 && now - last < 30) {
+        raf = requestAnimationFrame(step);
+        return;
+      }
+      last = now;
+      const x = from + (target - from) * (1 - Math.pow(1 - k, 3));
+      cur.current = x;
+      setV(x);
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, on, ms]);
+  return v;
 }
 
 export const WidgetView = memo(function WidgetView({ w, d }: { w: Widget; d: WidgetData }) {
@@ -73,30 +115,41 @@ function MetricW({ w, d }: { w: Widget; d: WidgetData }) {
   const id = w.metric || 'cpu';
   const info = METRIC[id];
   const locale = getLocale();
-  const v = d.stats ? info.value(d.stats) : null;
+  const raw = d.stats ? info.value(d.stats) : null;
+  const ms = Math.min(450, (d.rate ?? 1000) * 0.85);
+  const v = useTween(raw, ms, !!d.lively);
   const hist = d.history[id] || [];
-  const max = info.max ?? Math.max(1, ...hist.filter((x): x is number => x !== null)) * 1.15;
-  const text = info.fmt(v, locale);
+  const known = hist.filter((x): x is number => x !== null);
+  const max = info.max ?? Math.max(1, ...known) * 1.15;
+  // Spitzenwert der letzten Minute (kleine Markierung)
+  const peak = known.length > 3 ? Math.max(...known.slice(-60)) : null;
+  const text = info.fmt(v, locale, d.decimals ?? 0);
   const [num, unit] = split(text);
   const sub = d.stats && info.sub ? info.sub(d.stats, d.sys, locale) : '';
   const label = t(`metric.${id}` as TKey);
-  const lv = level(v, info.warn);
+  const lv = level(raw, info.warn);
   const color = w.color || info.color;
-  const unavailable = v === null && d.stats !== null;
+  const unavailable = raw === null && d.stats !== null;
+  const subLine = (
+    <>
+      {sub && <div className="w-sub ellipsis">{sub}</div>}
+      {unavailable && <NA id={id} />}
+    </>
+  );
 
-  if (w.style === 'ring') {
+  if (w.style === 'ring' || w.style === 'speedo') {
+    const Gauge = w.style === 'ring' ? Ring : Speedo;
     return (
       <>
-        <Title w={w} fallback={label} />
-        <div className="ring-wrap">
-          <Ring value={v} max={max} color={color} className={lv} />
+        <Title w={w} fallback={label} right={peak !== null && w.size !== 's' ? <span className="w-peak">▲ {info.fmt(peak, locale, 0)}</span> : undefined} />
+        <div className={`ring-wrap ${w.style}`}>
+          <Gauge value={v} max={max} color={color} className={lv} peak={peak} />
           <div className={`ring-val ${lv}`}>
             <b>{num}</b>
             <small>{unit}</small>
           </div>
         </div>
-        {sub && <div className="w-sub ellipsis">{sub}</div>}
-        {unavailable && <NA id={id} />}
+        {subLine}
       </>
     );
   }
@@ -106,9 +159,9 @@ function MetricW({ w, d }: { w: Widget; d: WidgetData }) {
         <Title w={w} fallback={label} right={<b className={`w-val ${lv}`}>{text}</b>} />
         <div className="hbar">
           <i className={lv} style={{ width: `${v === null ? 0 : Math.min(100, (v / max) * 100)}%`, background: color }} />
+          {peak !== null && <em className="hbar-peak" style={{ left: `${Math.min(100, (peak / max) * 100)}%` }} />}
         </div>
-        {sub && <div className="w-sub ellipsis">{sub}</div>}
-        {unavailable && <NA id={id} />}
+        {subLine}
       </>
     );
   }
@@ -117,8 +170,7 @@ function MetricW({ w, d }: { w: Widget; d: WidgetData }) {
       <>
         <Title w={w} fallback={label} right={<b className={`w-val ${lv}`}>{text}</b>} />
         <Spark data={hist} max={max} color={color} />
-        {sub && <div className="w-sub ellipsis">{sub}</div>}
-        {unavailable && <NA id={id} />}
+        {subLine}
       </>
     );
   }
@@ -129,8 +181,7 @@ function MetricW({ w, d }: { w: Widget; d: WidgetData }) {
         <b>{num}</b>
         <small>{unit}</small>
       </div>
-      {sub && <div className="w-sub ellipsis">{sub}</div>}
-      {unavailable && <NA id={id} />}
+      {subLine}
     </>
   );
 }
@@ -141,16 +192,66 @@ function NA({ id }: { id: string }) {
   return <div className="w-na">{t(k as TKey)}</div>;
 }
 
-export function Ring({ value, max = 100, color, className = '' }: { value: number | null; max?: number; color: string; className?: string }) {
+interface GaugeProps {
+  value: number | null;
+  max?: number;
+  color: string;
+  className?: string;
+  peak?: number | null;
+}
+
+/** Dreiviertel-Ring mit Skala, Leuchten (ohne teure Filter) und Spitzenwert-Punkt */
+export function Ring({ value, max = 100, color, className = '', peak = null }: GaugeProps) {
+  const gid = useId().replace(/:/g, '');
   const r = 42;
   const c = 2 * Math.PI * r;
-  const frac = value === null ? 0 : Math.max(0, Math.min(1, value / max));
-  // Dreiviertel-Kreis (wie ein Tacho)
   const arc = c * 0.75;
+  const frac = value === null ? 0 : Math.max(0, Math.min(1, value / max));
+  const pk = peak === null ? null : Math.max(0, Math.min(1, peak / max));
+  // Position des Spitzenwert-Punkts auf dem Bogen (Start bei 135°)
+  const pa = pk === null ? 0 : ((135 + 270 * pk) * Math.PI) / 180;
   return (
     <svg className={`ring ${className}`} viewBox="0 0 100 100" aria-hidden="true">
+      <defs>
+        <linearGradient id={`g${gid}`} x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0" style={{ stopColor: color, stopOpacity: 0.45 }} />
+          <stop offset="1" style={{ stopColor: color, stopOpacity: 1 }} />
+        </linearGradient>
+      </defs>
+      <circle cx="50" cy="50" r={48.5} className="ring-ticks" strokeDasharray={`0.7 ${(2 * Math.PI * 48.5 * 0.75) / 20 - 0.7}`} transform="rotate(135 50 50)" style={{ strokeDashoffset: 0 }} />
       <circle cx="50" cy="50" r={r} className="ring-track" strokeDasharray={`${arc} ${c}`} transform="rotate(135 50 50)" />
-      <circle cx="50" cy="50" r={r} className="ring-fill" stroke={color} strokeDasharray={`${arc * frac} ${c}`} transform="rotate(135 50 50)" />
+      <circle cx="50" cy="50" r={r} className="ring-glow" stroke={color} strokeDasharray={`${arc * frac} ${c}`} transform="rotate(135 50 50)" />
+      <circle cx="50" cy="50" r={r} className="ring-fill" stroke={`url(#g${gid})`} strokeDasharray={`${arc * frac} ${c}`} transform="rotate(135 50 50)" />
+      {pk !== null && <circle className="ring-peak" cx={50 + r * Math.cos(pa)} cy={50 + r * Math.sin(pa)} r="2.2" />}
+    </svg>
+  );
+}
+
+/** Tacho mit Zeiger – wie im Auto */
+export function Speedo({ value, max = 100, color, className = '', peak = null }: GaugeProps) {
+  const frac = value === null ? 0 : Math.max(0, Math.min(1, value / max));
+  const r = 40;
+  const c = Math.PI * r; // Halbkreis
+  const ang = -90 + 180 * frac; // Zeiger: -90° (links) … +90° (rechts)
+  const pk = peak === null ? null : Math.max(0, Math.min(1, peak / max));
+  const ticks = Array.from({ length: 11 }, (_, i) => {
+    const a = Math.PI + (Math.PI * i) / 10;
+    const long = i % 5 === 0;
+    return <line key={i} x1={50 + 44 * Math.cos(a)} y1={56 + 44 * Math.sin(a)} x2={50 + (long ? 36 : 39) * Math.cos(a)} y2={56 + (long ? 36 : 39) * Math.sin(a)} className={long ? 'tick long' : 'tick'} />;
+  });
+  return (
+    <svg className={`speedo ${className}`} viewBox="0 0 100 64" aria-hidden="true">
+      <path d="M10 56 A40 40 0 0 1 90 56" className="ring-track" />
+      <path d="M10 56 A40 40 0 0 1 90 56" className="ring-glow" stroke={color} strokeDasharray={`${c * frac} ${c}`} />
+      <path d="M10 56 A40 40 0 0 1 90 56" className="ring-fill" stroke={color} strokeDasharray={`${c * frac} ${c}`} />
+      {/* Warnbereich rechts */}
+      <path d="M86.4 29.55 A45 45 0 0 1 95 56" className="speedo-red" />
+      {ticks}
+      {pk !== null && <circle className="ring-peak" cx={50 + 40 * Math.cos(Math.PI + Math.PI * pk)} cy={56 + 40 * Math.sin(Math.PI + Math.PI * pk)} r="2" />}
+      <g transform={`rotate(${ang} 50 56)`}>
+        <path d="M50 56 L48.6 54 L50 20 L51.4 54 Z" className="needle" />
+      </g>
+      <circle cx="50" cy="56" r="4" className="needle-hub" />
     </svg>
   );
 }

@@ -112,28 +112,35 @@
     linear-gradient(180deg, #070912, #0d1530);
 }
 .dash-bg[data-bg='grid'] {
-  background: linear-gradient(180deg, #12002b 0%, #3b0764 48%, #ff2e88 49.5%, #12002b 50%);
+  /* Synthwave: Retro-Sonne über einem Gitter – komplett statisch (keine Animation = keine Last) */
+  background: linear-gradient(180deg, #0d0221 0%, #2a0845 38%, #6a0f5a 52%, #12002b 52.2%, #0d0221 100%);
+}
+.dash-bg[data-bg='grid']::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: 34vmin;
+  height: 34vmin;
+  transform: translate(-50%, -88%);
+  border-radius: 50%;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 58%, #2a0845 58% 61%, transparent 61% 66%, #2a0845 66% 70%, transparent 70% 75%, #2a0845 75% 80%, transparent 80% 85%, #2a0845 85% 91%),
+    linear-gradient(180deg, #ffd319 0%, #ff8c00 45%, #ff2975 100%);
+  opacity: 0.85;
 }
 .synth-grid {
   position: absolute;
   left: -50%;
   right: -50%;
-  top: 50%;
+  top: 52%;
   bottom: -40%;
   background-image:
-    linear-gradient(rgba(255, 46, 136, 0.7) 2px, transparent 2px),
-    linear-gradient(90deg, rgba(255, 46, 136, 0.7) 2px, transparent 2px);
+    linear-gradient(rgba(255, 41, 117, 0.55) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(255, 41, 117, 0.55) 2px, transparent 2px);
   background-size: 60px 60px;
   transform: perspective(300px) rotateX(60deg);
   transform-origin: top;
-}
-.dash.anim:not(.paused) .synth-grid {
-  animation: synth 3s linear infinite;
-}
-@keyframes synth {
-  to {
-    background-position: 0 60px;
-  }
 }
 
 /* ------------------------------------------------------------------ Raster */
@@ -229,7 +236,8 @@
   inset: 0;
   border-radius: inherit;
   padding: 1.5px;
-  background: conic-gradient(from var(--rgb-a, 0deg), #ff004c, #ffb300, #2bff88, #00c8ff, #a64dff, #ff004c);
+  /* statischer RGB-Rand – bewusst ohne Dauer-Animation */
+  background: conic-gradient(from 210deg, #ff004c, #ffb300, #2bff88, #00c8ff, #a64dff, #ff004c);
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
@@ -237,20 +245,6 @@
   mask-composite: exclude;
   pointer-events: none;
 }
-@property --rgb-a {
-  syntax: '<angle>';
-  inherits: false;
-  initial-value: 0deg;
-}
-.dash.rgb.anim:not(.paused) .card-w::before {
-  animation: rgbspin 4s linear infinite;
-}
-@keyframes rgbspin {
-  to {
-    --rgb-a: 360deg;
-  }
-}
-
 /* ------------------------------------------------------------------ Bausteine */
 .w-title {
   display: flex;
@@ -338,7 +332,110 @@
 .ring-track {
   stroke: var(--d-track);
 }
-/* Keine Übergänge und kein filter: jede Animation zwingt die Grafikkarte zu vollen Bildraten */
+/* Keine CSS-Übergänge und kein filter: Bewegung macht nur useTween – kurz nach neuen Werten, nie dauerhaft */
+.ring-glow {
+  fill: none;
+  stroke-width: 15;
+  stroke-linecap: round;
+  opacity: 0.16; /* "Leuchten" als breiter, durchsichtiger Strich – kostet fast nichts */
+}
+.ring-ticks {
+  fill: none;
+  stroke: var(--d-text3);
+  stroke-width: 2.4;
+  opacity: 0.55;
+}
+.ring-peak {
+  fill: var(--d-text);
+  opacity: 0.9;
+}
+.speedo {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 100%;
+  height: 100%;
+  max-height: 240px;
+}
+.speedo .ring-track,
+.speedo .ring-fill,
+.speedo .ring-glow {
+  fill: none;
+  stroke-linecap: round;
+}
+.speedo .ring-track,
+.speedo .ring-fill {
+  stroke-width: 7;
+}
+.speedo .ring-glow {
+  stroke-width: 15;
+}
+.speedo-red {
+  fill: none;
+  stroke: var(--hot);
+  stroke-width: 2.5;
+  opacity: 0.7;
+}
+.speedo .tick {
+  stroke: var(--d-text3);
+  stroke-width: 1;
+}
+.speedo .tick.long {
+  stroke: var(--d-text2);
+  stroke-width: 1.8;
+}
+.needle {
+  fill: var(--d-text);
+}
+.needle-hub {
+  fill: var(--d-accent);
+  stroke: var(--d-text);
+  stroke-width: 1.2;
+}
+.speedo.hot .ring-fill {
+  stroke: var(--hot);
+}
+.ring-wrap.speedo {
+  align-items: end;
+}
+.ring-wrap.speedo .ring-val {
+  margin-bottom: 2%;
+}
+.ring-wrap.speedo .ring-val b {
+  font-size: clamp(20px, 2.6vw, 34px);
+}
+.wz-m .ring-wrap.speedo .ring-val b,
+.wz-l .ring-wrap.speedo .ring-val b,
+.wz-xl .ring-wrap.speedo .ring-val b {
+  font-size: clamp(28px, 3.6vw, 48px);
+}
+.w-peak {
+  font-size: 11px;
+  letter-spacing: 0;
+  color: var(--d-text3);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.hbar {
+  position: relative;
+}
+.hbar-peak {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--d-text);
+  opacity: 0.6;
+}
+/* Schlichte Skins: ohne Leuchten und Skala */
+.dash[data-skin='clean'] .ring-glow,
+.dash[data-skin='classic'] .ring-glow,
+.dash[data-skin='terminal'] .ring-glow,
+.dash[data-skin='classic'] .ring-ticks,
+.dash[data-skin='clean'] .ring-ticks {
+  display: none;
+}
 .ring.hot .ring-fill {
   stroke: var(--hot);
 }
@@ -667,13 +764,23 @@
 
 /* Neon: dunkel, lila/türkis Leuchten */
 .dash[data-skin='neon'] .card-w {
-  border-color: rgba(var(--d-accent-rgb), 0.28);
-  box-shadow: 0 0 0 1px rgba(var(--d-accent-rgb), 0.06);
+  border-color: rgba(var(--d-accent-rgb), 0.3);
+  /* statischer Schein um die Kachel – wird einmal gezeichnet, ändert sich nie */
+  box-shadow:
+    0 0 0 1px rgba(var(--d-accent-rgb), 0.08),
+    0 0 24px -6px rgba(var(--d-accent-rgb), 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.dash[data-skin='neon'] .ring-glow,
+.dash[data-skin='sunset'] .ring-glow {
+  opacity: 0.24;
 }
 .dash[data-skin='neon'] .ring-val b,
 .dash[data-skin='neon'] .big-num b,
 .dash[data-skin='neon'] .clock b {
-  text-shadow: 0 0 10px rgba(var(--d-accent-rgb), 0.45);
+  text-shadow:
+    0 0 12px rgba(var(--d-accent-rgb), 0.6),
+    0 0 2px rgba(255, 255, 255, 0.4);
 }
 
 /* Glas: milchiges Glas über dem Hintergrund */

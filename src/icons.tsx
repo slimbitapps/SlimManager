@@ -66,3 +66,4 @@ export const IconDown = base(<path d="m6 9 6 6 6-6" />);
 export const IconImage = base(<><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="1.8" /><path d="m21 16-5-5-9 9" /></>);
 export const IconBell = base(<><path d="M6 10a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 16 6 10z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></>);
 export const IconGamepad = base(<><path d="M7 8h10a4.5 4.5 0 0 1 4.3 5.8l-1 3.3a2.4 2.4 0 0 1-4 1l-2-2.1h-4.6l-2 2.1a2.4 2.4 0 0 1-4-1l-1-3.3A4.5 4.5 0 0 1 7 8z" /><path d="M7.5 11v3M6 12.5h3" /><path d="M15.5 12h.01M17.5 13.5h.01" /></>);
+export const IconExpand = base(<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />);

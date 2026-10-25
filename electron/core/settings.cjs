@@ -9,7 +9,7 @@ const DEFAULTS = {
   onboarded: false,
   prefs: { lang: '', theme: 'system', mode: 'simple' },
   // Aussehen des Dashboards (Skin, Hintergrund, Farben …)
-  look: { skin: 'neon', accent: '', bg: 'aurora', bgImage: false, dim: 0.45, blur: 0, cardAlpha: 0.72, radius: 16, font: 'system', rgb: false, anim: false },
+  look: { skin: 'neon', accent: '', bg: 'aurora', bgImage: false, dim: 0.45, blur: 0, cardAlpha: 0.72, radius: 16, font: 'system', rgb: false, anim: true, decimals: 0 },
   // null = Standard-Layout des Skins
   layout: { pc: null, phone: null },
   remote: { allowControl: true, approveNew: true, phoneLook: 'same' },
@@ -18,7 +18,8 @@ const DEFAULTS = {
   overlay: { enabled: false, corner: 'tr', metrics: ['cpu', 'gpu', 'ram', 'netDown'], opacity: 0.85, scale: 1, hotkey: true },
   alerts: { enabled: false, cpuTemp: 90, gpuTemp: 85, ram: 92 },
   // gpu: false = SlimManager benutzt die Grafikkarte nicht (die gehört dem Spiel)
-  app: { closeToTray: false, gpu: false },
+  // rate: Aktualisierung in ms, solange man hinschaut · liveInGame: auch beim Zocken flüssig (kostet etwas Leistung)
+  app: { closeToTray: false, gpu: false, rate: 1000, liveInGame: false },
   devices: [],
   window: {},
 };
@@ -49,6 +50,9 @@ function sanitize(d) {
     const n = Number(d.alerts[k]);
     d.alerts[k] = Number.isFinite(n) ? Math.min(110, Math.max(30, Math.round(n))) : DEFAULTS.alerts[k];
   }
+  d.app.rate = [250, 500, 1000].includes(Number(d.app.rate)) ? Number(d.app.rate) : 1000;
+  d.app.liveInGame = !!d.app.liveInGame;
+  d.app.gpu = !!d.app.gpu;
   const port = Number(d.network.port);
   d.network.port = Number.isInteger(port) && port >= 0 && port <= 65535 ? port : DEFAULTS.network.port;
   return d;

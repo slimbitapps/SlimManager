@@ -7,7 +7,7 @@ import { bits, bytes, pct, rate, temp } from './format';
 
 export const WIDGET_TYPES: WidgetType[] = ['metric', 'cores', 'procs', 'clock', 'net', 'disks', 'boost', 'system', 'battery', 'text'];
 export const METRICS: MetricId[] = ['cpu', 'ram', 'gpu', 'gpuMem', 'cpuTemp', 'gpuTemp', 'netDown', 'netUp', 'diskRead', 'diskWrite', 'swap', 'cpuSpeed', 'battery', 'procCount'];
-export const STYLES: WStyle[] = ['ring', 'bar', 'chart', 'number'];
+export const STYLES: WStyle[] = ['ring', 'speedo', 'bar', 'chart', 'number'];
 export const SIZES: WSize[] = ['s', 'w', 't', 'm', 'l', 'xl'];
 export const SKINS: Skin[] = ['neon', 'glass', 'clean', 'classic', 'terminal', 'sunset'];
 
@@ -21,8 +21,8 @@ export interface MetricInfo {
   color: string;
   /** Wert aus dem Messpaket */
   value: (s: Stats) => number | null;
-  /** Wert als Text */
-  fmt: (v: number | null, locale: string) => string;
+  /** Wert als Text (dec = Nachkommastellen, wo sinnvoll) */
+  fmt: (v: number | null, locale: string, dec?: number) => string;
   /** kleiner Zusatztext unter dem Wert */
   sub?: (s: Stats, sys: SysInfo | null, locale: string) => string;
   /** ab wann der Wert "warm" / "heiß" eingefärbt wird */
@@ -32,25 +32,25 @@ export interface MetricInfo {
 const gb = (v: number | null, l: string) => bytes(v, l);
 
 export const METRIC: Record<MetricId, MetricInfo> = {
-  cpu: { max: 100, color: 'var(--c-cpu)', value: (s) => s.cpu, fmt: pct, sub: (s, sys) => [sys?.cpu?.replace(/\(R\)|\(TM\)|™|®|CPU|Processor/gi, '').replace(/\s+/g, ' ').trim(), s.cpuSpeed ? `${s.cpuSpeed} GHz` : ''].filter(Boolean).join(' · '), warn: [80, 95] },
-  ram: { max: 100, color: 'var(--c-ram)', value: (s) => s.ram, fmt: pct, sub: (s, _sys, l) => `${gb(s.ramUsed, l)} / ${gb(s.ramTotal, l)}`, warn: [80, 92] },
-  gpu: { max: 100, color: 'var(--c-gpu)', value: (s) => s.gpu, fmt: pct, sub: (_s, sys) => (sys?.gpu || '').replace(/NVIDIA |AMD |Intel\(R\) |\(R\)|\(TM\)/g, ''), warn: [90, 99] },
-  gpuMem: { max: 100, color: 'var(--c-gpu)', value: (s) => s.gpuMem, fmt: pct, sub: (s, _sys, l) => (s.gpuMemTotal ? `${gb(s.gpuMemUsed, l)} / ${gb(s.gpuMemTotal, l)}` : ''), warn: [85, 95] },
-  cpuTemp: { max: 100, color: 'var(--c-temp)', value: (s) => s.cpuTemp, fmt: temp, warn: [80, 90] },
-  gpuTemp: { max: 100, color: 'var(--c-temp)', value: (s) => s.gpuTemp, fmt: temp, warn: [78, 87] },
+  cpu: { max: 100, color: 'var(--c-cpu)', value: (s) => s.cpu, fmt: (v, l, d) => pct(v, d, l), sub: (s, sys) => [sys?.cpu?.replace(/\(R\)|\(TM\)|™|®|CPU|Processor/gi, '').replace(/\s+/g, ' ').trim(), s.cpuSpeed ? `${s.cpuSpeed} GHz` : ''].filter(Boolean).join(' · '), warn: [80, 95] },
+  ram: { max: 100, color: 'var(--c-ram)', value: (s) => s.ram, fmt: (v, l, d) => pct(v, d, l), sub: (s, _sys, l) => `${gb(s.ramUsed, l)} / ${gb(s.ramTotal, l)}`, warn: [80, 92] },
+  gpu: { max: 100, color: 'var(--c-gpu)', value: (s) => s.gpu, fmt: (v, l, d) => pct(v, d, l), sub: (_s, sys) => (sys?.gpu || '').replace(/NVIDIA |AMD |Intel\(R\) |\(R\)|\(TM\)/g, ''), warn: [90, 99] },
+  gpuMem: { max: 100, color: 'var(--c-gpu)', value: (s) => s.gpuMem, fmt: (v, l, d) => pct(v, d, l), sub: (s, _sys, l) => (s.gpuMemTotal ? `${gb(s.gpuMemUsed, l)} / ${gb(s.gpuMemTotal, l)}` : ''), warn: [85, 95] },
+  cpuTemp: { max: 100, color: 'var(--c-temp)', value: (s) => s.cpuTemp, fmt: (v, l, d) => temp(v, d, l), warn: [80, 90] },
+  gpuTemp: { max: 100, color: 'var(--c-temp)', value: (s) => s.gpuTemp, fmt: (v, l, d) => temp(v, d, l), warn: [78, 87] },
   netDown: { color: 'var(--c-net)', value: (s) => s.netDown, fmt: bits },
   netUp: { color: 'var(--c-net2)', value: (s) => s.netUp, fmt: bits },
   diskRead: { color: 'var(--c-disk)', value: (s) => s.diskRead, fmt: rate },
   diskWrite: { color: 'var(--c-disk2)', value: (s) => s.diskWrite, fmt: rate },
-  swap: { max: 100, color: 'var(--c-ram)', value: (s) => s.swap, fmt: pct, sub: (s, _sys, l) => gb(s.swapUsed, l) },
+  swap: { max: 100, color: 'var(--c-ram)', value: (s) => s.swap, fmt: (v, l, d) => pct(v, d, l), sub: (s, _sys, l) => gb(s.swapUsed, l) },
   cpuSpeed: { max: 6, color: 'var(--c-cpu)', value: (s) => s.cpuSpeed, fmt: (v, l) => (v === null ? '–' : `${v.toLocaleString(l, { maximumFractionDigits: 2 })} GHz`) },
-  battery: { max: 100, color: 'var(--c-net)', value: (s) => s.battery?.pct ?? null, fmt: pct },
-  procCount: { color: 'var(--c-cpu)', value: (s) => s.procCount, fmt: (v, l) => (v === null ? '–' : v.toLocaleString(l)) },
+  battery: { max: 100, color: 'var(--c-net)', value: (s) => s.battery?.pct ?? null, fmt: (v, l) => pct(v, 0, l) },
+  procCount: { color: 'var(--c-cpu)', value: (s) => s.procCount, fmt: (v, l) => (v === null ? '–' : Math.round(v).toLocaleString(l)) },
 };
 
 /** Welche Darstellungen passen zu welchem Messwert */
 export function stylesFor(m: MetricId): WStyle[] {
-  return m === 'procCount' ? ['number', 'chart'] : METRIC[m].max ? STYLES : ['chart', 'number', 'bar', 'ring'];
+  return m === 'procCount' ? ['number', 'chart'] : METRIC[m].max ? STYLES : ['chart', 'number', 'bar', 'ring', 'speedo'];
 }
 
 let seq = 0;

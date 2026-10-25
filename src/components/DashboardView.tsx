@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { t, type TKey } from '../i18n';
-import { useStore, updateSettings, setEditing, setEditTarget, setView, setImage, toast } from '../store';
+import { useStore, updateSettings, setEditing, setEditTarget, setView, setImage, toast, toggleFullscreen } from '../store';
 import { Dashboard } from '../shared/Dashboard';
 import type { WidgetData } from '../shared/WidgetView';
 import { defaultLayout, makeWidget, METRIC, METRICS, needsProcs, PRESETS, SIZES, SKINS, stylesFor, WIDGET_TYPES } from '../shared/widgets';
 import type { Bg, Font, Look, MetricId, Skin, Widget, WidgetType, WSize, WStyle } from '../types';
 import { Seg, Switch } from './ui';
-import { IconEdit, IconPalette, IconPip, IconPhone, IconPlus, IconCheck, IconDownload, IconUpload, IconImage, IconTrash } from '../icons';
+import { IconEdit, IconPalette, IconPip, IconPhone, IconPlus, IconCheck, IconDownload, IconUpload, IconImage, IconTrash, IconClose, IconExpand, IconMonitor } from '../icons';
 
 type Target = 'pc' | 'phone';
 type Panel = 'widget' | 'add' | 'look';
@@ -27,6 +27,9 @@ export function useWidgetData(): WidgetData {
   const procs = useStore((s) => s.procs);
   const boost = useStore((s) => s.boost);
   const game = useStore((s) => s.game);
+  const lively = useStore((s) => s.lively && s.settings.look.anim);
+  const decimals = useStore((s) => s.settings.look.decimals);
+  const rate = useStore((s) => s.settings.app.rate);
   return useMemo(
     () => ({
       stats,
@@ -35,9 +38,12 @@ export function useWidgetData(): WidgetData {
       procs: procs ? procs.groups : null,
       boost,
       game,
+      lively,
+      decimals,
+      rate,
       onBoost: (on: boolean) => (on ? game && window.api.startBoost(game) : window.api.stopBoost()),
     }),
-    [stats, history, sys, procs, boost, game],
+    [stats, history, sys, procs, boost, game, lively, decimals, rate],
   );
 }
 
@@ -46,6 +52,7 @@ export function DashboardView() {
   const overlayOn = useStore((s) => s.settings.overlay.enabled);
   const image = useStore((s) => s.image);
   const editing = useStore((s) => s.editing);
+  const fullscreen = useStore((s) => s.fullscreen);
   const target = useStore((s) => s.editTarget);
   const setTarget = setEditTarget;
   const [panel, setPanel] = useState<Panel>('add');
@@ -84,8 +91,16 @@ export function DashboardView() {
     : undefined;
 
   return (
-    <div className={`dash-view ${editing ? 'with-panel' : ''}`}>
-      <header className="view-head">
+    <div className={`dash-view ${editing ? 'with-panel' : ''} ${fullscreen ? 'fs' : ''}`}>
+      {fullscreen && (
+        <div className="fs-exit">
+          <button className="btn sm" onClick={() => window.api.setFullscreen(false)} data-testid="fs-exit">
+            <IconClose size={15} />
+            {t('fs.exit')}
+          </button>
+        </div>
+      )}
+      {!fullscreen && <header className="view-head">
         <h1>{editing ? t('dash.editTitle') : t('nav.dashboard')}</h1>
         {editing && (
           <Seg<Target>
@@ -108,6 +123,7 @@ export function DashboardView() {
               <IconPhone size={16} />
               {t('dash.toPhone')}
             </button>
+            <FullscreenButton />
             <button className="btn sm" onClick={() => (setPanel('look'), setEditing(true))} data-testid="open-look">
               <IconPalette size={16} />
               {t('dash.look')}
@@ -124,7 +140,7 @@ export function DashboardView() {
             {t('common.done')}
           </button>
         )}
-      </header>
+      </header>}
       <div className="dash-area">
         <div className={`dash-holder ${editing && target === 'phone' ? 'phone-frame' : ''}`}>
           <Dashboard look={look} image={image} layout={layout} data={data} edit={edit} maxCols={editing && target === 'phone' ? 2 : 6} minCol={editing && target === 'phone' ? 150 : 210} testId="dashboard" />
@@ -151,6 +167,40 @@ export function DashboardView() {
           </aside>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Vollbild-Knopf – bei mehreren Bildschirmen mit Auswahl (z. B. Dashboard auf den Zweitmonitor) */
+function FullscreenButton() {
+  const [displays, setDisplays] = useState<Awaited<ReturnType<typeof window.api.displays>>>([]);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    window.api.displays().then(setDisplays);
+  }, []);
+  const many = displays.length > 1;
+  return (
+    <div className="menu-wrap">
+      <button
+        className="btn ghost sm"
+        onClick={() => (many ? setOpen(!open) : toggleFullscreen())}
+        title={t('fs.tip')}
+        data-testid="fs-btn"
+      >
+        <IconExpand size={16} />
+        {t('fs.btn')}
+      </button>
+      {open && (
+        <div className="pop-menu" onMouseLeave={() => setOpen(false)}>
+          {displays.map((d) => (
+            <button key={d.id} onClick={() => (setOpen(false), toggleFullscreen(d.id))}>
+              <IconMonitor size={15} />
+              {d.label} · {d.w}×{d.h}
+              {d.current ? ` (${t('fs.here')})` : ''}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -315,6 +365,12 @@ function StyleIcon({ s }: { s: WStyle }) {
   return (
     <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
       {s === 'ring' && <path d="M6.3 17.7A8 8 0 1 1 17.7 17.7" />}
+      {s === 'speedo' && (
+        <>
+          <path d="M4 17a8 8 0 0 1 16 0" />
+          <path d="M12 17l4-5" />
+        </>
+      )}
       {s === 'bar' && (
         <>
           <rect x="3" y="10" width="18" height="5" rx="2.5" opacity=".35" />
@@ -348,6 +404,8 @@ const FONTS: Font[] = ['system', 'rounded', 'mono', 'retro'];
 export function LookPanel({ compact }: { compact?: boolean }) {
   const look = useStore((s) => s.settings.look);
   const image = useStore((s) => s.image);
+  const rate = useStore((s) => s.settings.app.rate);
+  const liveInGame = useStore((s) => s.settings.app.liveInGame);
   const set = (p: Partial<Look>) => updateSettings({ look: p });
   return (
     <div className="look-panel" data-testid="look-panel">
@@ -444,11 +502,40 @@ export function LookPanel({ compact }: { compact?: boolean }) {
             <span>{t('look.rgb')}</span>
             <Switch on={look.rgb} onChange={(rgb) => set({ rgb })} testId="rgb-switch" />
           </div>
+          <div className="section-label">{t('look.motion')}</div>
           <div className="field row-between">
             <span>{t('look.anim')}</span>
-            <Switch on={look.anim} onChange={(anim) => set({ anim })} />
+            <Switch on={look.anim} onChange={(anim) => set({ anim })} testId="anim-switch" />
           </div>
-          {(look.anim || look.rgb) && <p className="faint small">{t('look.animNote')}</p>}
+          <div className="field">
+            <span>{t('look.rate')}</span>
+            <Seg<string>
+              value={String(rate)}
+              onChange={(v) => updateSettings({ app: { rate: Number(v) } })}
+              options={[
+                ['1000', t('look.rate.1')],
+                ['500', t('look.rate.2')],
+                ['250', t('look.rate.4')],
+              ]}
+            />
+          </div>
+          <div className="field">
+            <span>{t('look.decimals')}</span>
+            <Seg<string>
+              value={String(look.decimals)}
+              onChange={(v) => set({ decimals: Number(v) })}
+              options={[
+                ['0', '42 %'],
+                ['1', '42,3 %'],
+                ['2', '42,37 %'],
+              ]}
+            />
+          </div>
+          <div className="field row-between">
+            <span>{t('look.liveInGame')}</span>
+            <Switch on={liveInGame} onChange={(liveInGame) => updateSettings({ app: { liveInGame } })} />
+          </div>
+          <p className="faint small">{t('look.animNote')}</p>
         </>
       )}
     </div>
