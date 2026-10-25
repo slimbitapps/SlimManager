@@ -13,6 +13,7 @@ const { listAddresses, pickAddress } = require('./core/network.cjs');
 const { Monitor } = require('./core/monitor.cjs');
 const { normalize, group, isProtected, setPriority, killPids, LEVELS } = require('./core/procs.cjs');
 const { Boost, detectGame } = require('./core/boost.cjs');
+const { Tweaks } = require('./core/tweaks.cjs');
 const { cleanLayout, cleanLook } = require('./core/layout.cjs');
 
 const isDev = !!process.env.VITE_DEV_SERVER_URL;
@@ -57,7 +58,8 @@ const pairing = new Pairing({
 if (!settings.data.app.gpu) app.disableHardwareAcceleration();
 
 const monitor = new Monitor();
-const boost = new Boost();
+const tweaks = new Tweaks({ dir: app.getPath('userData'), log: (...a) => log('tweaks', ...a) });
+const boost = new Boost({ tweaks });
 
 let win = null;
 let overlay = null;
@@ -115,14 +117,14 @@ function isDark(theme) {
 const TXT = {
   de: {
     open: 'SlimManager öffnen', boostOn: 'Game Boost starten', boostOff: 'Game Boost beenden', overlay: 'Mini-Anzeige', quit: 'Beenden',
-    noGame: 'Kein Spiel erkannt', noGameText: 'Starte zuerst ein Spiel oder wähle es in SlimManager unter „Game Boost“ aus.',
-    boostStarted: 'Game Boost aktiv', boostStopped: 'Game Boost beendet', hot: 'Achtung: {what} ist hoch ({v})',
+    noGame: 'Kein Spiel erkannt', noGameText: 'Starte zuerst ein Spiel oder wähle es in SlimManager unter „Boost“ aus.',
+    focusStarted: 'Fokus-Modus aktiv', boostStarted: 'Game Boost aktiv', boostStopped: 'Game Boost beendet', hot: 'Achtung: {what} ist hoch ({v})',
     cpuTemp: 'CPU-Temperatur', gpuTemp: 'GPU-Temperatur', ram: 'Arbeitsspeicher', exportTitle: 'Layout speichern', importTitle: 'Layout laden', image: 'Bild',
   },
   en: {
     open: 'Open SlimManager', boostOn: 'Start Game Boost', boostOff: 'Stop Game Boost', overlay: 'Mini overlay', quit: 'Quit',
-    noGame: 'No game detected', noGameText: 'Start a game first or pick it in SlimManager under “Game Boost”.',
-    boostStarted: 'Game Boost active', boostStopped: 'Game Boost stopped', hot: 'Warning: {what} is high ({v})',
+    noGame: 'No game detected', noGameText: 'Start a game first or pick it in SlimManager under “Boost”.',
+    focusStarted: 'Focus mode active', boostStarted: 'Game Boost active', boostStopped: 'Game Boost stopped', hot: 'Warning: {what} is high ({v})',
     cpuTemp: 'CPU temperature', gpuTemp: 'GPU temperature', ram: 'Memory', exportTitle: 'Save layout', importTitle: 'Load layout', image: 'Image',
   },
 };
@@ -319,15 +321,18 @@ function onPhoneCommand({ c, a, name, reply }) {
   let res = { ok: false, error: 'bad' };
   if (c === 'kill') res = killGroup(String(arg.id || ''));
   else if (c === 'prio') res = prioGroup(String(arg.id || ''), String(arg.level || ''));
-  else if (c === 'boost') res = startBoost(String(arg.app || ''), false);
-  else if (c === 'unboost') res = stopBoost();
+  else if (c === 'boost') return startBoost(String(arg.app || ''), false, arg.mode === 'focus' ? 'focus' : 'game').then((r) => finish(r));
+  else if (c === 'unboost') return stopBoost().then((r) => finish(r));
   else if (c === 'overlay') {
     setOverlay(!!arg.on);
     res = { ok: true };
   }
-  log('phone', name, c, JSON.stringify(a), JSON.stringify(res));
-  send('phone-action', { name, c, a, ok: res.ok, at: Date.now() });
-  reply({ t: 'result', c, ok: !!res.ok, error: res.error || null });
+  finish(res);
+  function finish(r) {
+    log('phone', name, c, JSON.stringify(a), JSON.stringify({ ok: r.ok, error: r.error }));
+    send('phone-action', { name, c, a, ok: r.ok, at: Date.now() });
+    reply({ t: 'result', c, ok: !!r.ok, error: r.error || null });
+  }
 }
 
 // ------------------------------------------------------------------ Prozesse
@@ -410,31 +415,44 @@ function prioGroup(id, level) {
   return g ? prioPids(g.pids, level) : { ok: false, error: 'gone' };
 }
 
-// ------------------------------------------------------------------ Game Boost
+// ------------------------------------------------------------------ Boost (Gaming & Fokus)
 function boostState() {
   return boost.state();
 }
-function startBoost(appName, auto) {
-  if (!appName) return { ok: false, error: 'no-game' };
-  const st = boost.start(procCache.flat, {
-    targetApp: appName,
-    lowerOthers: settings.data.boost.lowerOthers,
-    raiseGame: settings.data.boost.raiseGame,
-    closeList: settings.data.boost.closeList,
-    auto,
-  });
+/** CPU der Hintergrund-Apps (ohne Spiel/System/SlimManager) – für "vorher/nachher" */
+function backgroundLoad(exceptApp = '') {
+  const skip = String(exceptApp).toLowerCase();
+  const bg = procCache.groups.filter((g) => (g.kind === 'app' || g.kind === 'background') && g.name.toLowerCase() !== skip);
+  return { cpu: Math.round(bg.reduce((s, g) => s + g.cpu, 0) * 10) / 10, ram: monitor.snap?.ramUsed ?? null };
+}
+async function startBoost(appName, auto, mode = settings.data.boost.mode) {
+  mode = mode === 'focus' ? 'focus' : 'game';
+  if (mode === 'game' && !appName) return { ok: false, error: 'no-game' };
+  // frische Prozessliste, damit nichts übersehen wird
+  await monitor.procTick(true);
+  const before = backgroundLoad(appName);
+  const b = settings.data.boost;
+  const st = await boost.start(procCache.flat, { mode, targetApp: mode === 'game' ? appName : '', cfg: b[mode], exceptions: b.exceptions, auto });
   updateProcWanted();
-  setTimeout(() => monitor.procTick(true), 500);
+  // Wirkung nach ein paar Sekunden messen (ehrliche Zahlen statt Versprechen)
+  const startedAt = st.startedAt;
+  setTimeout(async () => {
+    if (!boost.active || boost.session.startedAt !== startedAt) return;
+    await monitor.procTick(true);
+    const after = backgroundLoad(appName);
+    boost.setEffect({ cpuBefore: before.cpu, cpuAfter: after.cpu, ramFreed: before.ram !== null && after.ram !== null ? Math.max(0, before.ram - after.ram) : null });
+  }, 6000);
   return { ok: true, state: st };
 }
-function stopBoost() {
-  const s = boost.stop();
+async function stopBoost() {
+  const s = await boost.stop();
   updateProcWanted();
   setTimeout(() => monitor.procTick(true), 500);
   return { ok: !!s, summary: s };
 }
 function toggleBoost() {
   if (boost.active) return stopBoost();
+  if (settings.data.boost.mode === 'focus') return startBoost('', false, 'focus');
   const game = detectGame(procCache.groups);
   if (!game) {
     notify(tx('noGame'), tx('noGameText'));
@@ -442,32 +460,36 @@ function toggleBoost() {
     send('navigate', 'boost');
     return { ok: false, error: 'no-game' };
   }
-  return startBoost(game, false);
+  return startBoost(game, false, 'game');
 }
 
-/** Automatischer Boost: Spiel startet → Boost an, Spiel beendet → Boost aus. */
+/** Automatischer Boost: Spiel startet → Gaming-Boost an, Spiel beendet → Boost aus. */
 function autoBoost(groups) {
   const running = detectGame(groups);
   if (autoBoost.lastStopped && !groups.some((g) => g.name === autoBoost.lastStopped)) autoBoost.lastStopped = null;
   if (boost.active) {
-    const still = groups.some((g) => g.name.toLowerCase() === boost.session.app.toLowerCase());
-    if (!still) stopBoost();
+    const s = boost.session;
+    if (s.mode === 'game' && s.app && !groups.some((g) => g.name.toLowerCase() === s.app.toLowerCase())) stopBoost();
     return;
   }
-  if (settings.data.boost.auto && running && autoBoost.lastStopped !== running) startBoost(running, true);
+  if (settings.data.boost.auto && running && autoBoost.lastStopped !== running) startBoost(running, true, 'game');
 }
 
+let wasActive = false;
 boost.on('change', (st) => {
   ownPriority(st.active);
   setTimeout(updateLive, 0);
   send('boost', st);
   server?.broadcast({ t: 'boost', b: st });
-  buildTrayMenu();
-  if (st.active) notify(tx('boostStarted'), st.app);
+  if (st.active !== wasActive) {
+    wasActive = st.active;
+    buildTrayMenu();
+    if (st.active) notify(tx(st.mode === 'focus' ? 'focusStarted' : 'boostStarted'), st.app || '');
+  }
 });
 boost.on('summary', (sum) => {
   // Nach manuellem Beenden nicht sofort wieder automatisch starten
-  if (!sum.auto) autoBoost.lastStopped = sum.app;
+  if (!sum.auto && sum.app) autoBoost.lastStopped = sum.app;
   send('boost-summary', sum);
   server?.broadcast({ t: 'boost-summary', s: sum });
 });
@@ -676,7 +698,8 @@ handle('icon:get', async (p) => {
   return url;
 });
 handle('boost:get', () => boostState());
-handle('boost:start', (appName) => startBoost(String(appName || ''), false));
+handle('boost:start', (appName, mode) => startBoost(String(appName || ''), false, mode));
+handle('boost:caps', () => tweaks.caps());
 handle('boost:stop', () => stopBoost());
 handle('game:get', () => detectGame(procCache.groups));
 handle('overlay:set', (on) => setOverlay(!!on));
@@ -809,6 +832,8 @@ if (isTest) {
 
 // ------------------------------------------------------------------ Start
 app.whenReady().then(async () => {
+  // Reste eines Absturzes aufräumen (eingefrorene Programme auftauen, Energieplan zurück …)
+  tweaks.recover().catch((e) => log('recover', e));
   if (isMac && !isTest) Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'windowMenu' }]));
   else Menu.setApplicationMenu(null);
   addresses = listAddresses();
@@ -847,11 +872,19 @@ app.on('activate', showWindow);
 app.on('window-all-closed', () => {
   if ((!isMac && !settings.data.app.closeToTray) || isTest) app.quit();
 });
-app.on('before-quit', () => {
+let cleanedUp = false;
+app.on('before-quit', (e) => {
   quitting = true;
-  // Prioritäten zurücksetzen, bevor die App endet
-  if (boost.active) boost.stop();
+  if (cleanedUp) return;
+  // Erst alles zurücksetzen (auftauen, Prioritäten, Energieplan, Dienste), dann wirklich beenden
+  e.preventDefault();
+  cleanedUp = true;
   globalShortcut.unregisterAll();
   monitor.stop();
   server?.stop();
+  const done = () => {
+    tweaks.close();
+    app.quit();
+  };
+  Promise.race([(boost.active ? boost.stop() : Promise.resolve()).then(() => tweaks.restoreAll()), new Promise((r) => setTimeout(r, 6000))]).then(done, done);
 });

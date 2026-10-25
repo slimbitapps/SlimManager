@@ -1,4 +1,4 @@
-import type { BoostState, History, Look, MetricId, Proc, ProcGroup, Stats, SysInfo, Widget, Level } from './shared/types';
+import type { BoostState, History, Look, MetricId, Proc, ProcGroup, Stats, SysInfo, Widget, Level, BoostMode } from './shared/types';
 export type * from './shared/types';
 
 export type Lang = 'de' | 'en';
@@ -33,7 +33,15 @@ export interface Settings {
   layout: { pc: Widget[] | null; phone: Widget[] | null };
   remote: { allowControl: boolean; approveNew: boolean; phoneLook: string };
   network: { address: string; port: number };
-  boost: { auto: boolean; lowerOthers: boolean; raiseGame: boolean; closeList: string[]; games: string[]; hotkey: boolean };
+  boost: {
+    mode: BoostMode;
+    auto: boolean;
+    hotkey: boolean;
+    games: string[];
+    exceptions: string[];
+    game: { raiseGame: boolean; lowerOthers: boolean; freezeBg: boolean; freezeList: string[]; closeList: string[]; cores: boolean; power: boolean; trimRam: boolean; services: boolean };
+    focus: { lowerOthers: boolean; freezeBg: boolean; freezeList: string[]; closeList: string[]; quiet: boolean; services: boolean };
+  };
   overlay: OverlayCfg;
   alerts: { enabled: boolean; cpuTemp: number; gpuTemp: number; ram: number };
   app: { closeToTray: boolean; gpu: boolean; rate: number; liveInGame: boolean };
@@ -92,7 +100,8 @@ export interface Api {
   reveal(path: string): Promise<void>;
   icon(path: string): Promise<string | null>;
   getBoost(): Promise<BoostState>;
-  startBoost(app: string): Promise<Result>;
+  startBoost(app: string, mode?: BoostMode): Promise<Result>;
+  boostCaps(): Promise<{ freeze: boolean; cores: boolean; trim: boolean; power: boolean; services: boolean }>;
   stopBoost(): Promise<Result>;
   getGame(): Promise<string | null>;
   setOverlay(on: boolean): Promise<void>;

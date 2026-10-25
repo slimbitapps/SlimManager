@@ -142,12 +142,14 @@ function MetricW({ w, d }: { w: Widget; d: WidgetData }) {
     return (
       <>
         <Title w={w} fallback={label} right={peak !== null && w.size !== 's' ? <span className="w-peak">▲ {info.fmt(peak, locale, 0)}</span> : undefined} />
-        <div className={`ring-wrap ${w.style}`}>
-          <Gauge value={v} max={max} color={color} className={lv} peak={peak} />
-          <div className={`ring-val ${lv}`}>
-            <b>{num}</b>
-            <small>{unit}</small>
-          </div>
+        <div className={`ring-wrap g-${w.style}`}>
+          <Gauge value={v} max={max} color={color} className={lv} peak={peak} label={num} unit={unit} />
+          {w.style === 'ring' && (
+            <div className={`ring-val ${lv}`}>
+              <b>{num}</b>
+              <small>{unit}</small>
+            </div>
+          )}
         </div>
         {subLine}
       </>
@@ -198,7 +200,17 @@ interface GaugeProps {
   color: string;
   className?: string;
   peak?: number | null;
+  /** nur Tacho: Wert und Einheit unter dem Zeiger */
+  label?: string;
+  unit?: string;
 }
+
+/** Skala: 21 Striche nur entlang des Bogens (135° … 405°) – einmal berechnet, nie neu */
+const RING_TICKS = Array.from({ length: 21 }, (_, i) => {
+  const a = ((135 + (270 * i) / 20) * Math.PI) / 180;
+  const long = i % 5 === 0;
+  return <line key={i} x1={50 + 47 * Math.cos(a)} y1={50 + 47 * Math.sin(a)} x2={50 + (long ? 50 : 49.2) * Math.cos(a)} y2={50 + (long ? 50 : 49.2) * Math.sin(a)} className={long ? 'long' : ''} />;
+});
 
 /** Dreiviertel-Ring mit Skala, Leuchten (ohne teure Filter) und Spitzenwert-Punkt */
 export function Ring({ value, max = 100, color, className = '', peak = null }: GaugeProps) {
@@ -218,7 +230,7 @@ export function Ring({ value, max = 100, color, className = '', peak = null }: G
           <stop offset="1" style={{ stopColor: color, stopOpacity: 1 }} />
         </linearGradient>
       </defs>
-      <circle cx="50" cy="50" r={48.5} className="ring-ticks" strokeDasharray={`0.7 ${(2 * Math.PI * 48.5 * 0.75) / 20 - 0.7}`} transform="rotate(135 50 50)" style={{ strokeDashoffset: 0 }} />
+      <g className="ring-ticks">{RING_TICKS}</g>
       <circle cx="50" cy="50" r={r} className="ring-track" strokeDasharray={`${arc} ${c}`} transform="rotate(135 50 50)" />
       <circle cx="50" cy="50" r={r} className="ring-glow" stroke={color} strokeDasharray={`${arc * frac} ${c}`} transform="rotate(135 50 50)" />
       <circle cx="50" cy="50" r={r} className="ring-fill" stroke={`url(#g${gid})`} strokeDasharray={`${arc * frac} ${c}`} transform="rotate(135 50 50)" />
@@ -228,7 +240,7 @@ export function Ring({ value, max = 100, color, className = '', peak = null }: G
 }
 
 /** Tacho mit Zeiger – wie im Auto */
-export function Speedo({ value, max = 100, color, className = '', peak = null }: GaugeProps) {
+export function Speedo({ value, max = 100, color, className = '', peak = null, label = '', unit = '' }: GaugeProps) {
   const frac = value === null ? 0 : Math.max(0, Math.min(1, value / max));
   const r = 40;
   const c = Math.PI * r; // Halbkreis
@@ -240,7 +252,7 @@ export function Speedo({ value, max = 100, color, className = '', peak = null }:
     return <line key={i} x1={50 + 44 * Math.cos(a)} y1={56 + 44 * Math.sin(a)} x2={50 + (long ? 36 : 39) * Math.cos(a)} y2={56 + (long ? 36 : 39) * Math.sin(a)} className={long ? 'tick long' : 'tick'} />;
   });
   return (
-    <svg className={`speedo ${className}`} viewBox="0 0 100 64" aria-hidden="true">
+    <svg className={`speedo ${className}`} viewBox="0 0 100 82" aria-hidden="true">
       <path d="M10 56 A40 40 0 0 1 90 56" className="ring-track" />
       <path d="M10 56 A40 40 0 0 1 90 56" className="ring-glow" stroke={color} strokeDasharray={`${c * frac} ${c}`} />
       <path d="M10 56 A40 40 0 0 1 90 56" className="ring-fill" stroke={color} strokeDasharray={`${c * frac} ${c}`} />
@@ -252,6 +264,12 @@ export function Speedo({ value, max = 100, color, className = '', peak = null }:
         <path d="M50 56 L48.6 54 L50 20 L51.4 54 Z" className="needle" />
       </g>
       <circle cx="50" cy="56" r="4" className="needle-hub" />
+      <text x="50" y="76" className="speedo-val" textAnchor="middle">
+        {label}
+        <tspan className="speedo-unit" dx="1.5">
+          {unit}
+        </tspan>
+      </text>
     </svg>
   );
 }

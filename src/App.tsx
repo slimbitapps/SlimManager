@@ -7,7 +7,7 @@ import { BoostView } from './components/Boost';
 import { PhoneView } from './components/Phone';
 import { SettingsDialog } from './components/Settings';
 import { ApprovalPrompt, HotspotGuide } from './components/Hotspot';
-import { Toasts, BoostSummaryDialog } from './components/Feedback';
+import { Toasts, BoostSummaryDialog, BoostFlash } from './components/Feedback';
 import { Logo } from './components/ui';
 import { IconGrid, IconList, IconBolt, IconPhone, IconSettings, IconHelp } from './icons';
 import type { ReactNode } from 'react';
@@ -40,6 +40,7 @@ export function App() {
       {dialog?.kind === 'settings' && <SettingsDialog tab={dialog.tab} />}
       {dialog?.kind === 'hotspot' && <HotspotGuide />}
       <BoostSummaryDialog />
+      <BoostFlash />
       <ApprovalPrompt />
       <Toasts />
     </>
@@ -54,7 +55,7 @@ function Sidebar() {
   const items: [View, string, ReactNode, ReactNode?][] = [
     ['dashboard', t('nav.dashboard'), <IconGrid size={19} key="d" />],
     ['processes', t('nav.processes'), <IconList size={19} key="p" />, stats?.procCount ? <span className="nav-count">{stats.procCount}</span> : null],
-    ['boost', t('nav.boost'), <IconBolt size={19} key="b" />, boost.active ? <span className="nav-live" title={t('boost.active')} /> : null],
+    ['boost', t('nav.boost'), <IconBolt size={19} key="b" />, boost.active ? <span className={`nav-live ${boost.mode === 'focus' ? 'focus' : ''}`} title={t('boost.active')} /> : null],
     ['phone', t('nav.phone'), <IconPhone size={19} key="h" />, phones ? <span className="nav-count on">{phones}</span> : null],
   ];
   return (

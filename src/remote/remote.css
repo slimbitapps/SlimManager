@@ -425,3 +425,18 @@ select {
     grid-auto-rows: minmax(170px, auto);
   }
 }
+.r-modes {
+  width: 100%;
+  max-width: 420px;
+}
+.r-modes button {
+  flex: 1;
+  padding: 10px;
+}
+.r-bolt.on.focus {
+  background: radial-gradient(circle, #34d399, #047857);
+  box-shadow: 0 0 50px rgba(16, 185, 129, 0.55);
+}
+.r-btn.big.focus {
+  background: linear-gradient(135deg, #10b981, #0ea5e9);
+}

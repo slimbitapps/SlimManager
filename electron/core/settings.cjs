@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { cleanLayout, cleanLook, cleanOverlay } = require('./layout.cjs');
+const { DEFAULT_EXCEPTIONS } = require('./boost.cjs');
 
 const DEFAULTS = {
   version: 1,
@@ -14,7 +15,16 @@ const DEFAULTS = {
   layout: { pc: null, phone: null },
   remote: { allowControl: true, approveNew: true, phoneLook: 'same' },
   network: { address: 'auto', port: 8650 },
-  boost: { auto: false, lowerOthers: true, raiseGame: true, closeList: [], games: [], hotkey: true },
+  // Boost: zwei Modi mit eigenen Einstellungen, gemeinsame Ausnahmen ("nie anfassen")
+  boost: {
+    mode: 'game',
+    auto: false,
+    hotkey: true,
+    games: [],
+    exceptions: DEFAULT_EXCEPTIONS,
+    game: { raiseGame: true, lowerOthers: true, freezeBg: true, freezeList: [], closeList: [], cores: true, power: true, trimRam: true, services: false },
+    focus: { lowerOthers: true, freezeBg: true, freezeList: [], closeList: [], quiet: true, services: false },
+  },
   overlay: { enabled: false, corner: 'tr', metrics: ['cpu', 'gpu', 'ram', 'netDown'], opacity: 0.85, scale: 1, hotkey: true },
   alerts: { enabled: false, cpuTemp: 90, gpuTemp: 85, ram: 92 },
   // gpu: false = SlimManager benutzt die Grafikkarte nicht (die gehört dem Spiel)
@@ -43,9 +53,24 @@ function sanitize(d) {
   d.look = cleanLook(d.look, DEFAULTS.look);
   d.overlay = cleanOverlay(d.overlay, DEFAULTS.overlay);
   d.layout = { pc: d.layout?.pc ? cleanLayout(d.layout.pc) : null, phone: d.layout?.phone ? cleanLayout(d.layout.phone) : null };
-  const names = (a) => (Array.isArray(a) ? [...new Set(a.filter((x) => typeof x === 'string' && x.length < 120))].slice(0, 100) : []);
-  d.boost.closeList = names(d.boost.closeList);
-  d.boost.games = names(d.boost.games);
+  const names = (a) => (Array.isArray(a) ? [...new Set(a.filter((x) => typeof x === 'string' && x.trim() && x.length < 120).map((x) => x.trim()))].slice(0, 100) : []);
+  const b = d.boost;
+  // Alte Einstellungen (Version 1.0-Test) übernehmen
+  if (Array.isArray(b.closeList)) {
+    if (!b.game.closeList.length) b.game.closeList = b.closeList;
+    delete b.closeList;
+  }
+  if (b.raiseGame !== undefined) b.game.raiseGame = b.raiseGame;
+  if (b.lowerOthers !== undefined) b.game.lowerOthers = b.lowerOthers;
+  delete b.raiseGame;
+  delete b.lowerOthers;
+  b.mode = b.mode === 'focus' ? 'focus' : 'game';
+  b.games = names(b.games);
+  b.exceptions = names(b.exceptions);
+  for (const m of ['game', 'focus']) {
+    for (const k of ['freezeList', 'closeList']) b[m][k] = names(b[m][k]);
+    for (const [k, v] of Object.entries(b[m])) if (!Array.isArray(v)) b[m][k] = !!v;
+  }
   for (const k of ['cpuTemp', 'gpuTemp', 'ram']) {
     const n = Number(d.alerts[k]);
     d.alerts[k] = Number.isFinite(n) ? Math.min(110, Math.max(30, Math.round(n))) : DEFAULTS.alerts[k];

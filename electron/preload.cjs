@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('api', {
   getBoost: invoke('boost:get'),
   startBoost: invoke('boost:start'),
   stopBoost: invoke('boost:stop'),
+  boostCaps: invoke('boost:caps'),
   getGame: invoke('game:get'),
   setOverlay: invoke('overlay:set'),
   overlaySize: invoke('overlay:size'),

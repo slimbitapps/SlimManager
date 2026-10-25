@@ -1466,3 +1466,230 @@
 .pop-menu button:hover {
   background: var(--surface-2);
 }
+
+/* ---------------------------------------------------------------- Boost 2.0 */
+.mode-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  max-width: 1100px;
+  margin-bottom: 14px;
+}
+.mode-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 2px solid var(--line-2);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mode-card:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.mode-card.on {
+  opacity: 1;
+}
+.mode-card.m-game.on {
+  border-color: #8b5cf6;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.18), rgba(6, 182, 212, 0.08)), var(--surface);
+}
+.mode-card.m-focus.on {
+  border-color: #10b981;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(56, 189, 248, 0.08)), var(--surface);
+}
+.mode-ic {
+  font-size: 30px;
+  line-height: 1;
+}
+.mode-card b {
+  display: block;
+  font-size: 16px;
+}
+.mode-card small {
+  display: block;
+  color: var(--text-2);
+  font-size: 12.5px;
+  margin-top: 2px;
+}
+.boost-hero.m-focus {
+  background:
+    radial-gradient(70% 120% at 0% 0%, rgba(16, 185, 129, 0.24), transparent 60%),
+    radial-gradient(60% 120% at 100% 100%, rgba(56, 189, 248, 0.16), transparent 60%),
+    var(--surface);
+}
+.boost-hero.m-focus.on {
+  border-color: rgba(16, 185, 129, 0.5);
+}
+.boost-hero.m-focus.on .bolt {
+  background: radial-gradient(circle, #34d399, #047857);
+}
+.bolt-emoji {
+  font-size: 40px;
+}
+.effect {
+  max-width: 1100px;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+}
+.fx-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.fx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+.fx-measure {
+  display: flex;
+  gap: 28px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.fx-measure span {
+  display: block;
+  font-size: 12px;
+  color: var(--text-3);
+  font-weight: 600;
+}
+.fx-measure b {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.fx-measure .fx-calm {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.fx-measure em {
+  font-style: normal;
+  color: #22c55e;
+}
+.name-list {
+  padding: 12px 14px;
+}
+.name-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px 4px 11px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  font-size: 12.5px;
+}
+.name-chip button {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+.name-chip button:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.nav-live.focus {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+/* "BOOST!"-Moment – läuft genau einmal (1,4 s) */
+.boost-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(139, 92, 246, 0.35), transparent 60%);
+  animation: bf-fade 1.4s ease-out forwards;
+}
+.boost-flash.focus {
+  background: radial-gradient(circle at center, rgba(16, 185, 129, 0.32), transparent 60%);
+}
+.bf-ring {
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  border: 6px solid #a78bfa;
+  animation: bf-ring 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+.boost-flash.focus .bf-ring {
+  border-color: #34d399;
+}
+.bf-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  text-shadow: 0 0 20px rgba(139, 92, 246, 0.9);
+  animation: bf-pop 1.4s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards;
+}
+.bf-text b {
+  font-size: 34px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+@keyframes bf-fade {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes bf-ring {
+  from {
+    transform: scale(0.3);
+    opacity: 1;
+  }
+  to {
+    transform: scale(5);
+    opacity: 0;
+  }
+}
+@keyframes bf-pop {
+  0% {
+    transform: scale(0.6);
+  }
+  25% {
+    transform: scale(1.08);
+  }
+  40%,
+  100% {
+    transform: scale(1);
+  }
+}
+@media (max-width: 1100px) {
+  .mode-cards {
+    grid-template-columns: 1fr;
+  }
+}

@@ -224,8 +224,21 @@ function AppIcon({ path, kind }: { path: string; kind: Kind }) {
 function ActionBar({ r, onKill, onPrio }: { r: Row; onKill: () => void; onPrio: (l: Level) => void }) {
   const boost = useStore((s) => s.settings.boost);
   const locked = isLocked(r.kind);
-  const inClose = boost.closeList.includes(r.name);
   const isGame = boost.games.includes(r.name);
+  // Wie soll der Boost (aktueller Modus) mit dieser App umgehen?
+  const m = boost[boost.mode];
+  const has = (l: string[]) => l.some((x) => x.toLowerCase() === r.name.toLowerCase());
+  const role = has(boost.exceptions) ? 'keep' : has(m.closeList) ? 'close' : has(m.freezeList) ? 'freeze' : 'auto';
+  const setRole = (v: string) => {
+    const drop = (l: string[]) => l.filter((x) => x.toLowerCase() !== r.name.toLowerCase());
+    const add = (l: string[], on: boolean) => (on ? [...drop(l), r.name] : drop(l));
+    updateSettings({
+      boost: {
+        exceptions: add(boost.exceptions, v === 'keep'),
+        [boost.mode]: { closeList: add(m.closeList, v === 'close'), freezeList: add(m.freezeList, v === 'freeze') },
+      },
+    });
+  };
   return (
     <div className="action-bar" data-testid="action-bar">
       <AppIcon path={r.path} kind={r.kind} />
@@ -249,7 +262,7 @@ function ActionBar({ r, onKill, onPrio }: { r: Row; onKill: () => void; onPrio: 
               ))}
             </select>
           </label>
-          <button className="btn sm" onClick={() => window.api.startBoost(r.name).then(() => toast(t('boost.startedFor', { name: r.name }), 'ok'))} title={t('procs.boostThis')}>
+          <button className="btn sm" onClick={() => window.api.startBoost(r.name, 'game').then(() => toast(t('boost.startedFor', { name: r.name }), 'ok'))} title={t('procs.boostThis')}>
             <IconBolt size={15} />
             {t('procs.boostThis')}
           </button>
@@ -262,13 +275,16 @@ function ActionBar({ r, onKill, onPrio }: { r: Row; onKill: () => void; onPrio: 
             <IconGamepad size={15} />
             {isGame ? t('procs.isGame') : t('procs.markGame')}
           </button>
-          <button
-            className={`btn sm ${inClose ? 'active' : ''}`}
-            onClick={() => updateSettings({ boost: { closeList: inClose ? boost.closeList.filter((g) => g !== r.name) : [...boost.closeList, r.name] } })}
-            title={t('procs.closeOnBoost.tip')}
-          >
-            {inClose ? t('procs.inCloseList') : t('procs.closeOnBoost')}
-          </button>
+          <label className="prio-pick" title={t('procs.role.tip')}>
+            <span className="small muted">{t(boost.mode === 'focus' ? 'procs.role.focus' : 'procs.role.game')}</span>
+            <select className="select sm" value={role} onChange={(e) => setRole(e.target.value)} data-testid="role-select">
+              {['auto', 'keep', 'freeze', 'close'].map((x) => (
+                <option key={x} value={x}>
+                  {t(`procs.role.${x}` as TKey)}
+                </option>
+              ))}
+            </select>
+          </label>
           {r.path && (
             <button className="btn icon sm ghost" onClick={() => window.api.reveal(r.path)} title={t('procs.reveal')} aria-label={t('procs.reveal')}>
               <IconFolder size={16} />
@@ -286,7 +302,7 @@ function ActionBar({ r, onKill, onPrio }: { r: Row; onKill: () => void; onPrio: 
 
 /** "Aufräumen": Apps und Hintergrundprogramme auswählen und gemeinsam beenden */
 function CleanupDialog({ procs, onClose }: { procs: ProcData; onClose: () => void }) {
-  const closeList = useStore((s) => s.settings.boost.closeList);
+  const closeList = useStore((s) => s.settings.boost.game.closeList);
   const locale = getLocale();
   const candidates = procs.groups.filter((g) => g.kind === 'app' || g.kind === 'background').sort((a, b) => b.mem - a.mem);
   const [picked, setPicked] = useState<Set<string>>(() => new Set(candidates.filter((g) => closeList.includes(g.name)).map((g) => g.id)));

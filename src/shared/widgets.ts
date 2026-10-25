@@ -66,7 +66,7 @@ const w = (id: string, type: WidgetType, size: WSize, extra: Partial<Widget> = {
 export const PRESETS: Record<'gamer' | 'classic' | 'minimal' | 'streamer' | 'phone', Widget[]> = {
   gamer: [
     m('cpu', 'cpu', 'ring', 'm'),
-    m('gpu', 'gpu', 'ring', 'm'),
+    m('gpu', 'gpu', 'speedo', 'm'),
     m('ct', 'cpuTemp', 'number', 's'),
     m('gt', 'gpuTemp', 'number', 's'),
     w('clock', 'clock', 's'),

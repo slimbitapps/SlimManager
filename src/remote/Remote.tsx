@@ -278,7 +278,7 @@ function ProcSheet({ p, onClose }: { p: ProcGroup; onClose: () => void }) {
               </button>
             ))}
           </div>
-          <button className="r-btn" onClick={() => (conn.send('boost', { app: p.name }), onClose())}>
+          <button className="r-btn" onClick={() => (conn.send('boost', { app: p.name, mode: 'game' }), onClose())}>
             ⚡ {t('procs.boostThis')}
           </button>
           <button
@@ -309,22 +309,47 @@ function BoostTab() {
   const candidates = (procs || []).filter((p) => p.kind === 'game' || p.kind === 'app').sort((a, b) => (a.kind === 'game' ? -1 : 0) - (b.kind === 'game' ? -1 : 0) || b.mem - a.mem);
   const game = candidates.find((p) => p.kind === 'game')?.name || '';
   const [pick, setPick] = useState('');
+  const [mode, setMode] = useState<'game' | 'focus'>('game');
   const target = pick || game;
+  const m = boost.active ? boost.mode || 'game' : mode;
   return (
     <div className="r-boost" data-testid="r-boost">
-      <div className={`r-bolt ${boost.active ? 'on' : ''}`}>
+      {!boost.active && control && (
+        <div className="r-seg r-modes">
+          <button className={mode === 'game' ? 'on' : ''} onClick={() => setMode('game')} data-testid="r-mode-game">
+            🎮 {t('boost.mode.game')}
+          </button>
+          <button className={mode === 'focus' ? 'on' : ''} onClick={() => setMode('focus')} data-testid="r-mode-focus">
+            💼 {t('boost.mode.focus')}
+          </button>
+        </div>
+      )}
+      <div className={`r-bolt ${boost.active ? 'on' : ''} ${m === 'focus' ? 'focus' : ''}`}>
         <svg viewBox="0 0 24 24" width="64" height="64" aria-hidden="true">
           <path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="currentColor" />
         </svg>
       </div>
-      <h2>{boost.active ? t('boost.activeFor', { name: boost.app || '' }) : game ? t('boost.detected', { name: game }) : t('boost.title')}</h2>
+      <h2>{m === 'focus' ? (boost.active ? t('focus.active') : t('focus.title')) : boost.active ? t('boost.activeFor', { name: boost.app || '' }) : game ? t('boost.detected', { name: game }) : t('boost.title')}</h2>
+      {boost.active && (boost.frozen || boost.lowered) ? (
+        <p className="r-sub">
+          ❄️ {t('fx.frozen', { n: boost.frozen ?? 0 })} · 🐢 {t('fx.lowered', { n: boost.lowered ?? 0 })}
+        </p>
+      ) : null}
       {boost.active && (
         <p className="r-sub">
           CPU {stats?.cpu != null ? Math.round(stats.cpu) : '–'} % · GPU {stats?.gpu != null ? Math.round(stats.gpu) : '–'} % · RAM {stats?.ram != null ? Math.round(stats.ram) : '–'} %
         </p>
       )}
       {!control && <div className="r-note">{t('r.viewOnly')}</div>}
-      {control && !boost.active && (
+      {control && !boost.active && m === 'focus' && (
+        <>
+          <p className="r-sub">{t('focus.what')}</p>
+          <button className="r-btn big focus" onClick={() => conn.send('boost', { mode: 'focus' })} data-testid="r-focus-start">
+            💼 {t('focus.start')}
+          </button>
+        </>
+      )}
+      {control && !boost.active && m === 'game' && (
         <>
           <select className="r-select" value={target} onChange={(e) => setPick(e.target.value)}>
             <option value="">{t('boost.choose')}</option>
@@ -335,14 +360,14 @@ function BoostTab() {
               </option>
             ))}
           </select>
-          <button className="r-btn big" disabled={!target} onClick={() => conn.send('boost', { app: target })} data-testid="r-boost-start">
+          <button className="r-btn big" disabled={!target} onClick={() => conn.send('boost', { app: target, mode: 'game' })} data-testid="r-boost-start">
             ⚡ {t('boost.start')}
           </button>
         </>
       )}
       {control && boost.active && (
         <button className="r-btn big ghost" onClick={() => conn.send('unboost')} data-testid="r-boost-stop">
-          {t('boost.stop')}
+          {t(m === 'focus' ? 'focus.stop' : 'boost.stop')}
         </button>
       )}
     </div>

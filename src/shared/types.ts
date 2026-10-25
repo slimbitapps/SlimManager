@@ -76,19 +76,40 @@ export interface Proc {
   kind: Kind;
 }
 
+export type BoostMode = 'game' | 'focus';
+
+export interface BoostEffect {
+  cpuBefore: number;
+  cpuAfter: number;
+  ramFreed: number | null;
+}
+
 export interface BoostState {
   active: boolean;
+  mode?: BoostMode;
   app?: string;
   startedAt?: number;
   auto?: boolean;
   raised?: number;
   lowered?: number;
   closed?: number;
+  frozen?: number;
+  cores?: number;
+  trimmed?: number;
+  kept?: number;
+  power?: 'high' | 'quiet' | null;
+  /** Dienste: Anzahl angehalten, 'asking' (wartet auf Admin), 'admin-denied' … */
+  services?: number | string | null;
   raiseError?: string | null;
   changed?: number;
+  effect?: BoostEffect;
 }
 
 export interface BoostSummary {
+  mode?: BoostMode;
+  frozen?: number;
+  closed?: number;
+  effect?: BoostEffect | null;
   app: string;
   durationMs: number;
   avgCpu: number | null;

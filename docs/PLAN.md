@@ -32,6 +32,10 @@ kein Konto, keine Werbung, alles lokal.
   Akzentfarbe, Deckkraft, Ecken, Schrift, RGB-Rand, Animationen
 - Prozesse: nach App gruppiert oder einzeln (Profi), Programm-Symbole, Filter (Apps/Spiele/Hintergrund/System), Suche, Sortieren,
   beenden (mit Rückfrage), Priorität, im Ordner zeigen, „Aufräumen“ (mehrere auf einmal), Systemprozesse geschützt
+- Leistung: keine Grafikkarte, Spar-Automatik beim Zocken, Pause wenn unsichtbar, Messungen nur bei Bedarf (test/perf.cjs)
+- Flüssige Anzeige: 1/2/4× pro Sekunde, Zähl-Effekt, Nachkommastellen, Tacho mit Zeiger, Leuchten, Spitzenwert; Vollbild (F11, Zweitmonitor)
+- Boost 2.0: Gaming + Fokus, Ausnahmen („Nie anfassen“), Einfrieren (Ballast + eigene Liste), CPU-Kerne freihalten, Energieplan,
+  RAM freigeben, Windows-Update & Co. pausieren (Admin), Wirkung vorher/nachher, absturzsicher (Wächter + undo.json)
 - Game Boost: Spiel-Erkennung (Steam, Epic, Riot, GOG, EA, Ubisoft, Xbox, Battle.net, Minecraft, Roblox + eigene Liste),
   manuell / automatisch / Tastenkürzel, Spiel hochstufen, andere bremsen (Mac: Hintergrund-Modus), Schließ-Liste,
   sauberes Zurücksetzen, Zusammenfassung nach der Runde
@@ -39,6 +43,13 @@ kein Konto, keine Werbung, alles lokal.
   Mini-Anzeige schalten, Vollbild, Bildschirm anlassen, Rechte „nur ansehen“, Zustimmung für weitere Geräte
 - Mini-Anzeige (immer im Vordergrund), Warnungen (Temperatur/RAM), Taskleisten-Symbol, im Hintergrund weiterlaufen
 - Deutsch/Englisch, hell/dunkel, Einfach/Profi, Einführung beim ersten Start
+
+## Noch auf echtem Windows zu prüfen (konnte am Mac nicht getestet werden)
+
+- Einfrieren/Auftauen über den PowerShell-Helfer (NtSuspendProcess), CPU-Kerne, RAM freigeben
+- Energieplan „Höchstleistung“ und „Turbo aus“ – und dass beides nach dem Boost wieder stimmt
+- Admin-Helfer für Windows-Update & Co. (eine UAC-Abfrage, Dienste starten danach wieder)
+- GPU-Auslastung (alle Hersteller) und NVIDIA-Temperatur
 
 ## Version 2 – Ideen (nach Wichtigkeit)
 

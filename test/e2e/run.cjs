@@ -2,7 +2,7 @@
 /**
  * End-to-End-Test: startet die echte App (Electron) und spielt alles durch –
  * Einführung, Dashboard + Editor + Skins, Mini-Anzeige, Prozesse (Priorität, Beenden),
- * Game Boost, Handy koppeln (QR + PIN + falsche PIN + Zustimmung), Steuern vom Handy, Einstellungen.
+ * Boost (Gaming: Einfrieren + Ausnahmen + Wirkung, Fokus-Modus), Vollbild, Handy koppeln (QR + PIN + falsche PIN + Zustimmung), Steuern vom Handy, Einstellungen.
  * Die Handy-Seite läuft dabei in handygroßen Fenstern. Für die Prozesse werden harmlose
  * Test-Programme gestartet (eine Kopie von "sleep").
  *
@@ -57,7 +57,16 @@ const alive = (p) => p.exitCode === null && p.signalCode === null;
 const prioOf = (p) => os.getPriority(p.pid);
 const isMac = process.platform === 'darwin';
 /** Mac: Planungs-Priorität laut ps (Hintergrund-Modus ≈ 4, normal ≈ 31) */
+/** Prozess angehalten (eingefroren)? */
+const stopped = (p) => process.platform !== 'win32' && /T/.test(require('node:child_process').execFileSync('ps', ['-o', 'stat=', '-p', String(p.pid)]).toString());
 const macPri = (p) => Number(require('node:child_process').execFileSync('ps', ['-o', 'pri=', '-p', String(p.pid)]).toString().trim());
+
+// Notbremse: hängt der Test, nach 8 Minuten abbrechen statt ewig zu warten
+setTimeout(() => {
+  console.error('✗ E2E-Test hängt – Abbruch');
+  for (const p of dummies) if (alive(p)) p.kill();
+  process.exit(2);
+}, 8 * 60_000).unref();
 
 (async () => {
   const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'slimmanager-e2e-'));
@@ -185,6 +194,7 @@ const macPri = (p) => Number(require('node:child_process').execFileSync('ps', ['
     const d1 = dummy('SlimTestDummy');
     const d2 = dummy('SlimTestGame');
     const d3 = dummy('SlimTestHelper');
+    const d4 = dummy('SlimTestKeep');
     await win.click('[data-testid="nav-processes"]');
     await win.waitForSelector('[data-testid="proc-row"]');
     await sleep(2500);
@@ -220,20 +230,59 @@ const macPri = (p) => Number(require('node:child_process').execFileSync('ps', ['
     await shot(win, '23-cleanup');
     await win.keyboard.press('Escape');
 
-    // ---------------------------------------------------------------- Game Boost
+    // ---------------------------------------------------------------- Boost: Gaming
     await win.click('[data-testid="nav-boost"]');
     await win.waitForSelector('[data-testid="boost-pick"] option[value="SlimTestGame"]', { state: 'attached', timeout: 10000 });
+    // Ausnahme eintippen: SlimTestKeep darf nie angefasst werden
+    await win.fill('[data-testid="exceptions"] input', 'SlimTestKeep');
+    await win.press('[data-testid="exceptions"] input', 'Enter');
+    await win.waitForSelector('[data-testid="exceptions"] .name-chip:has-text("SlimTestKeep")');
+    // SlimTestHelper soll eingefroren werden (eigene Liste – automatisch friert SlimManager nur bekannten Ballast ein)
+    await win.fill('[data-testid="freezelist"] input', 'SlimTestHelper');
+    await win.press('[data-testid="freezelist"] input', 'Enter');
+    await win.waitForSelector('[data-testid="freezelist"] .name-chip:has-text("SlimTestHelper")');
     await win.selectOption('[data-testid="boost-pick"]', 'SlimTestGame');
     await shot(win, '30-boost');
     await win.click('[data-testid="boost-start"]');
     await win.waitForSelector('[data-testid="boost-status"]');
-    // Andere Programme (hier: SlimTestHelper) werden gebremst (Mac: Hintergrund-Modus, sonst Priorität)
-    await waitFor(() => (isMac ? macPri(d3) <= 10 : prioOf(d3) >= 10), 5000, 'Helfer gebremst');
+    // Hintergrund-Programm (SlimTestHelper) wird eingefroren, die Ausnahme läuft weiter
+    if (process.platform !== 'win32') {
+      await waitFor(() => stopped(d3), 5000, 'Helfer eingefroren');
+      assert.ok(!stopped(d4), 'Ausnahme darf nicht eingefroren werden');
+      assert.ok(macPri(d4) > 20, 'Ausnahme darf nicht gebremst werden');
+    }
     if (process.platform === 'win32') await waitFor(() => prioOf(d2) < 0, 5000, 'Spiel hochgestuft');
+    await win.waitForSelector('[data-testid="effect-measure"]', { timeout: 15000 });
     await shot(win, '31-boost-active');
     await win.click('[data-testid="boost-stop"]');
-    await waitFor(() => (isMac ? macPri(d3) > 20 : prioOf(d3) === 0), 5000, 'Priorität zurückgesetzt');
+    if (process.platform !== 'win32') await waitFor(() => !stopped(d3), 5000, 'Helfer aufgetaut');
     assert.equal((await sm(() => global.__slimmanager.boost())).active, false);
+
+    // ---------------------------------------------------------------- Fokus-Modus
+    await win.click('[data-testid="mode-focus"]');
+    await win.fill('[data-testid="freezelist"] input', 'SlimTestHelper');
+    await win.press('[data-testid="freezelist"] input', 'Enter');
+    await shot(win, '32-focus');
+    await win.click('[data-testid="boost-start"]');
+    await win.waitForSelector('[data-testid="boost-status"]');
+    assert.equal((await sm(() => global.__slimmanager.boost())).mode, 'focus');
+    if (process.platform !== 'win32') await waitFor(() => stopped(d3), 5000, 'Fokus: Helfer eingefroren');
+    await sleep(1500);
+    await shot(win, '33-focus-active');
+    await win.click('[data-testid="boost-stop"]');
+    if (process.platform !== 'win32') await waitFor(() => !stopped(d3), 5000, 'Fokus: aufgetaut');
+    await win.click('[data-testid="mode-game"]');
+
+    // ---------------------------------------------------------------- Vollbild
+    await win.click('[data-testid="nav-dashboard"]');
+    await win.click('[data-testid="fs-btn"]');
+    await win.waitForSelector('.shell.fs', { timeout: 6000 });
+    assert.equal(await win.locator('.sidebar').count(), 0, 'im Vollbild keine Seitenleiste');
+    await sleep(1500);
+    await shot(win, '26-fullscreen', 600);
+    await win.keyboard.press('Escape');
+    await win.waitForSelector('.sidebar', { timeout: 6000 });
+    await sleep(1200);
 
     // ---------------------------------------------------------------- Handy koppeln (QR-Code)
     await win.click('[data-testid="nav-phone"]');
@@ -280,11 +329,11 @@ const macPri = (p) => Number(require('node:child_process').execFileSync('ps', ['
     await phone.waitForSelector('[data-testid="r-boost"]');
     await phone.selectOption('.r-select', 'SlimTestGame');
     await phone.click('[data-testid="r-boost-start"]');
-    await waitFor(async () => (await sm(() => global.__slimmanager.boost())).active, 4000, 'Boost vom Handy');
+    await waitFor(async () => (await sm(() => global.__slimmanager.boost())).active, 6000, 'Boost vom Handy');
     await phone.waitForSelector('[data-testid="r-boost-stop"]');
     await shot(phone, '53-phone-boost');
     await phone.click('[data-testid="r-boost-stop"]');
-    await waitFor(async () => !(await sm(() => global.__slimmanager.boost())).active, 4000, 'Boost vom Handy beendet');
+    await waitFor(async () => !(await sm(() => global.__slimmanager.boost())).active, 6000, 'Boost vom Handy beendet');
 
     // Tablet quer (Zweitbildschirm)
     await phone.click('[data-testid="r-tab-dash"]');

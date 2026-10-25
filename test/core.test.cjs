@@ -22,7 +22,8 @@ test('Einstellungen: Standardwerte, Speichern, kaputte Datei', () => {
   const again = new SettingsStore(f);
   assert.equal(again.data.look.skin, 'classic');
   assert.equal(again.data.boost.auto, true);
-  assert.equal(again.data.boost.lowerOthers, true, 'fehlende Werte bleiben Standard');
+  assert.equal(again.data.boost.game.lowerOthers, true, 'fehlende Werte bleiben Standard');
+  assert.ok(again.data.boost.exceptions.includes('Discord'), 'Standard-Ausnahmen');
   fs.writeFileSync(f, '{kaputt');
   assert.equal(new SettingsStore(f).data.look.skin, DEFAULTS.look.skin);
 });
@@ -35,16 +36,27 @@ test('Einstellungen: Geräte-Schlüssel nie an die Oberfläche, nicht von dort �
   assert.equal(s.data.devices.length, 1);
 });
 
+test('Einstellungen: alte Boost-Einstellungen werden übernommen', () => {
+  const f = tmp();
+  fs.writeFileSync(f, JSON.stringify({ boost: { closeList: ['Chrome'], raiseGame: false, lowerOthers: false } }));
+  const b = new SettingsStore(f).data.boost;
+  assert.deepEqual(b.game.closeList, ['Chrome']);
+  assert.equal(b.game.raiseGame, false);
+  assert.equal(b.game.lowerOthers, false);
+  assert.equal(b.closeList, undefined);
+});
+
 test('Einstellungen: unsinnige Werte werden korrigiert', () => {
   const s = new SettingsStore(tmp());
-  s.update({ look: { skin: 'hacker', dim: 5, radius: -3, accent: 'red' }, alerts: { cpuTemp: 999 }, network: { port: 99999 }, boost: { closeList: ['a', 'a', 3, 'b'] } });
+  s.update({ look: { skin: 'hacker', dim: 5, radius: -3, accent: 'red' }, alerts: { cpuTemp: 999 }, network: { port: 99999 }, boost: { game: { closeList: ['a', 'a', 3, 'b', ' '] }, mode: 'turbo' } });
   assert.equal(s.data.look.skin, 'neon');
   assert.equal(s.data.look.dim, 0.9);
   assert.equal(s.data.look.radius, 0);
   assert.equal(s.data.look.accent, '');
   assert.equal(s.data.alerts.cpuTemp, 110);
   assert.equal(s.data.network.port, DEFAULTS.network.port);
-  assert.deepEqual(s.data.boost.closeList, ['a', 'b']);
+  assert.deepEqual(s.data.boost.game.closeList, ['a', 'b']);
+  assert.equal(s.data.boost.mode, 'game');
 });
 
 // ------------------------------------------------------------------ Layout
@@ -175,64 +187,235 @@ test('Echte Priorität eines eigenen Kindprozesses senken', async () => {
   child.kill();
 });
 
-// ------------------------------------------------------------------ Game Boost
-const P = (n, app, kind, prio = 'normal') => ({ pid: 100 + n, app, name: app + '.exe', kind, prio, cpu: 0, mem: 0 });
-const LIST = [P(1, 'Game', 'game'), P(2, 'Game', 'game'), P(3, 'Chrome', 'app'), P(4, 'Updater', 'background'), P(5, 'svchost', 'system'), P(6, 'Discord', 'app'), P(7, 'Other', 'game'), P(8, 'Low', 'app', 'low'), P(9, 'SlimManager', 'self')];
+// ------------------------------------------------------------------ Boost
+const P = (n, app, kind, prio = 'normal', name = app + '.exe') => ({ pid: 100 + n, app, name, kind, prio, cpu: 0, mem: 0 });
+const LIST = [
+  P(1, 'Game', 'game'), P(2, 'Game', 'game'), P(3, 'Chrome', 'app'), P(4, 'Updater', 'background'), P(5, 'svchost', 'system'),
+  P(6, 'Discord', 'app'), P(7, 'Other', 'game'), P(8, 'Low', 'app', 'low'), P(9, 'SlimManager', 'self'),
+];
+const GAME_CFG = { raiseGame: true, lowerOthers: true, freezeBg: false, freezeList: [], closeList: [], cores: false, power: false, trimRam: false };
+
+/** Attrappe für tweaks.cjs – merkt sich alles */
+function fakeTweaks() {
+  const log = [];
+  return {
+    log,
+    freeze: async (p) => (log.push(['freeze', ...p]), p),
+    unfreeze: async (p) => log.push(['unfreeze', ...p]),
+    limitCores: async (p) => (log.push(['cores', ...p]), p),
+    restoreCores: async (p) => log.push(['uncores', ...p]),
+    trim: async (p) => (log.push(['trim', ...p]), p.length),
+    power: async (m) => (log.push(['power', m]), m),
+    restorePower: async () => log.push(['unpower']),
+    pauseServices: async () => (log.push(['services']), { ok: true, stopped: 3 }),
+    resumeServices: () => log.push(['unservices']),
+    noteBackground: () => {},
+  };
+}
+
+test('Ausnahmen erkennen auch andere Schreibweisen', () => {
+  const { matches } = require('../electron/core/boost.cjs');
+  const p = (app, name) => ({ app, name });
+  assert.ok(matches('Logitech G HUB', p('lghub', 'lghub.exe')));
+  assert.ok(matches('Corsair iCUE', p('iCUE', 'iCUE.exe')));
+  assert.ok(matches('Discord', p('Discord', 'Discord.exe')));
+  assert.ok(matches('OBS', p('OBS Studio', 'obs64.exe')));
+  assert.ok(matches('Elgato', p('WaveLink', 'WaveLink.exe')));
+  assert.ok(!matches('Discord', p('Google Chrome', 'chrome.exe')));
+  assert.ok(!matches('x', p('xbox', 'xbox.exe')), 'zu kurze Einträge passen nicht überall');
+});
 
 test('Boost-Plan: Spiel hoch, Apps/Hintergrund runter, System & andere Spiele unberührt', () => {
-  const plan = planBoost(LIST, { targetApp: 'game', closeList: ['Discord'] });
+  const plan = planBoost(LIST, { targetApp: 'game', cfg: { ...GAME_CFG, closeList: ['Discord'] } });
   assert.deepEqual(plan.raise, [101, 102]);
   assert.deepEqual(plan.lower, [103, 104]);
   assert.deepEqual(plan.kill, [106]);
-  const soft = planBoost(LIST, { targetApp: 'Game', lowerOthers: false, raiseGame: false });
+  const soft = planBoost(LIST, { targetApp: 'Game', cfg: { ...GAME_CFG, lowerOthers: false, raiseGame: false } });
   assert.deepEqual([soft.raise, soft.lower, soft.kill], [[], [], []]);
 });
 
-test('Boost: alles wird beim Beenden zurückgesetzt, Zusammenfassung stimmt', () => {
+test('Boost-Plan: Ausnahmen, Anti-Cheat und Launcher bleiben unberührt', () => {
+  const list = [
+    ...LIST,
+    P(20, 'EasyAntiCheat', 'app', 'normal', 'EasyAntiCheat.exe'),
+    P(21, 'Steam', 'app', 'normal', 'steam.exe'),
+    P(22, 'Steam', 'background', 'normal', 'steamwebhelper.exe'),
+    P(23, 'lghub', 'background', 'normal', 'lghub.exe'),
+  ];
+  const plan = planBoost(list, { targetApp: 'Game', exceptions: ['Discord', 'Logitech G HUB'], cfg: { ...GAME_CFG, freezeBg: true, freezeList: ['Steam'], closeList: ['Steam', 'EasyAntiCheat'] } });
+  const all = [...plan.lower, ...plan.freeze, ...plan.kill];
+  assert.ok(!all.includes(120), 'Anti-Cheat nie anfassen');
+  assert.ok(!plan.freeze.includes(121) && !plan.kill.includes(121), 'Launcher nie einfrieren/schließen');
+  assert.ok(plan.lower.includes(121), 'Launcher darf gebremst werden');
+  assert.ok(!all.includes(106) && !all.includes(123), 'Ausnahmen bleiben unberührt');
+  assert.deepEqual(plan.kept.sort(), [106, 123]);
+  assert.ok(plan.freeze.includes(104), 'reines Hintergrund-Programm wird eingefroren');
+  assert.ok(!plan.freeze.includes(103), 'App mit Fenster nicht automatisch einfrieren');
+});
+
+test('Boost-Plan: automatisch nur bekannten Ballast einfrieren – keine Kommandozeilen-Programme', () => {
+  const list = [P(1, 'Game', 'game'), P(2, 'node', 'background', 'normal', 'node'), P(3, 'curl', 'background', 'normal', 'curl'), P(4, 'GoogleUpdater', 'background'), P(5, 'Dropbox', 'background')];
+  const plan = planBoost(list, { targetApp: 'Game', cfg: { ...GAME_CFG, freezeBg: true } });
+  assert.deepEqual(plan.freeze, [104, 105]);
+  assert.ok(plan.lower.includes(102) && plan.lower.includes(103), 'nur gebremst');
+  const own = planBoost(list, { targetApp: 'Game', cfg: { ...GAME_CFG, freezeBg: false, freezeList: ['node'] } });
+  assert.deepEqual(own.freeze, [102], 'eigene Liste friert alles ein, was man will');
+});
+
+test('Boost-Plan: Helfer einer App werden nicht eingefroren, wenn die App selbst läuft', () => {
+  const list = [P(1, 'Game', 'game'), P(2, 'Chrome', 'app', 'normal', 'chrome.exe'), P(3, 'Chrome', 'background', 'normal', 'chrome_crashpad_handler.exe'), P(4, 'OneDrive', 'background')];
+  const plan = planBoost(list, { targetApp: 'Game', cfg: { ...GAME_CFG, freezeBg: true } });
+  assert.deepEqual(plan.freeze, [104]);
+});
+
+test('Fokus-Modus: kein Spiel nötig, nichts wird hochgestuft, keine Kerne/RAM-Tricks', () => {
+  const plan = planBoost(LIST, { mode: 'focus', cfg: { lowerOthers: true, freezeBg: true, freezeList: [], closeList: ['Discord'], cores: true, trimRam: true } });
+  assert.deepEqual(plan.raise, []);
+  assert.deepEqual(plan.freeze, [104]);
+  assert.deepEqual(plan.kill, [106]);
+  assert.deepEqual(plan.cores, []);
+  assert.deepEqual(plan.trim, []);
+});
+
+test('Boost: alles wird beim Beenden zurückgesetzt, Zusammenfassung stimmt', async () => {
   const calls = [];
   const setter = (pid, v) => {
     if (pid === 102) throw Object.assign(new Error('x'), { code: 'EACCES' }); // z. B. Anti-Cheat
     calls.push([pid, v]);
   };
   const killed = [];
-  const b = new Boost({ setter, killer: (pid) => killed.push(pid), background: null });
-  const st = b.start(LIST, { targetApp: 'Game', closeList: ['Discord'] });
+  const tw = fakeTweaks();
+  const b = new Boost({ setter, killer: (pid) => killed.push(pid), background: null, tweaks: tw });
+  const st = await b.start(LIST, { targetApp: 'Game', cfg: { ...GAME_CFG, freezeBg: true, closeList: ['Discord'], cores: true, power: true, trimRam: true } });
   assert.equal(st.active, true);
   assert.equal(st.raised, 1);
   assert.equal(st.raiseError, 'admin');
-  assert.equal(st.lowered, 2);
+  assert.equal(st.lowered, 1, 'Chrome gebremst (Updater ist eingefroren)');
+  assert.equal(st.frozen, 1);
   assert.equal(st.closed, 1);
+  assert.equal(st.power, 'high');
   assert.deepEqual(killed, [106]);
   b.record({ cpu: 50, gpu: 90, cpuTemp: 70, gpuTemp: 80 });
   b.record({ cpu: 70, gpu: null, cpuTemp: 75, gpuTemp: null });
   calls.length = 0;
-  const sum = b.stop();
-  // 1 (Spiel), 3, 4 zurück auf "normal"
-  assert.deepEqual(calls.map((c) => c[0]).sort(), [101, 103, 104]);
+  const sum = await b.stop();
+  assert.deepEqual(calls.map((c) => c[0]).sort(), [101, 103]);
   assert.ok(calls.every((c) => c[1] === os.constants.priority.PRIORITY_NORMAL));
+  const ops = tw.log.map((x) => x[0]);
+  for (const op of ['unfreeze', 'uncores', 'unpower']) assert.ok(ops.includes(op), op + ' fehlt');
   assert.equal(sum.avgCpu, 60);
   assert.equal(sum.avgGpu, 90);
   assert.equal(sum.maxCpuTemp, 75);
   assert.equal(b.active, false);
-  assert.equal(b.stop(), null, 'zweimal beenden ist harmlos');
+  assert.equal(await b.stop(), null, 'zweimal beenden ist harmlos');
 });
 
-test('Boost am Mac: Bremsen über Hintergrund-Modus, wird wieder aufgehoben', () => {
+test('Boost: Dienste pausieren läuft im Hintergrund und wird beim Beenden zurückgenommen', async () => {
+  const tw = fakeTweaks();
+  const b = new Boost({ setter: () => {}, killer: () => {}, background: null, tweaks: tw });
+  await b.start(LIST, { mode: 'focus', cfg: { lowerOthers: false, freezeBg: false, freezeList: [], closeList: [], quiet: true, services: true } });
+  await new Promise((r) => setTimeout(r, 10));
+  assert.equal(b.state().services, 3);
+  assert.equal(b.state().power, 'quiet');
+  await b.stop();
+  assert.ok(tw.log.some((x) => x[0] === 'unservices'));
+});
+
+test('Boost am Mac: Bremsen über Hintergrund-Modus, wird wieder aufgehoben', async () => {
   const bg = [];
   const b = new Boost({ setter: () => {}, killer: () => {}, background: (pid, on) => (bg.push([pid, on]), { ok: true }) });
-  const st = b.start(LIST, { targetApp: 'Game' });
+  const st = await b.start(LIST, { targetApp: 'Game', cfg: GAME_CFG });
   assert.equal(st.lowered, 4); // Chrome, Updater, Discord, Low – auch schon gebremste
-  b.stop();
+  await b.stop();
   assert.deepEqual(bg, [[103, true], [104, true], [106, true], [108, true], [103, false], [104, false], [106, false], [108, false]]);
 });
 
-test('Boost: neue Prozesse des Spiels werden nachgezogen', () => {
+test('Boost: neue Prozesse des Spiels und neue Hintergrund-Programme werden nachgezogen', async () => {
   const calls = [];
-  const b = new Boost({ setter: (pid) => calls.push(pid), killer: () => {}, background: null });
-  b.start([P(1, 'Game', 'game')], { targetApp: 'Game' });
-  b.follow([P(1, 'Game', 'game', 'high'), P(10, 'Game', 'game'), P(11, 'Chrome', 'app')]);
-  assert.deepEqual(calls, [101, 110]);
-  b.stop();
+  const tw = fakeTweaks();
+  const b = new Boost({ setter: (pid) => calls.push(pid), killer: () => {}, background: null, tweaks: tw });
+  await b.start([P(1, 'Game', 'game')], { targetApp: 'Game', cfg: { ...GAME_CFG, freezeBg: true } });
+  b.follow([P(1, 'Game', 'game', 'high'), P(10, 'Game', 'game'), P(11, 'Chrome', 'app'), P(12, 'Updater', 'background')]);
+  await b.busy;
+  assert.deepEqual(calls, [101, 110, 111]);
+  assert.ok(tw.log.some((x) => x[0] === 'freeze' && x.includes(112)), 'neuer Updater eingefroren');
+  await b.stop();
+});
+
+// ------------------------------------------------------------------ Tweaks
+test('Energieplan-Werte lesen (sprachunabhängig) und Kern-Maske', () => {
+  const { parsePowerQuery, backgroundMask } = require('../electron/core/tweaks.cjs');
+  const out = `GUID des Energieschemas: 381b4222-f694-41f0-9685-ff5bb260df2e  (Ausbalanciert)
+    GUID der Untergruppe: 54533251-82be-4824-96c1-47b60b740d00  (Prozessorenergieverwaltung)
+      GUID der Energieeinstellung: bc5038f7-23e0-4960-96da-33abaf5935ec  (Maximaler Leistungszustand des Prozessors)
+      Minimaler möglicher Einstellungswert: 0x00000000
+      Maximaler möglicher Einstellungswert: 0x00000064
+      Mögliche Einstellungsschritte: 0x00000001
+      Index der aktuellen Wechselstromeinstellung: 0x00000064
+      Index der aktuellen Gleichstromeinstellung: 0x0000005a`;
+  assert.deepEqual(parsePowerQuery(out), { ac: 100, dc: 90 });
+  assert.equal(parsePowerQuery('kaputt'), null);
+  assert.equal(backgroundMask(8), String(0b11000000));
+  assert.equal(backgroundMask(4), String(0b1000));
+  assert.equal(backgroundMask(1), '1');
+  assert.equal(BigInt(backgroundMask(64)) >> 48n, 0xffffn);
+});
+
+test('Windows-Energieplan: Höchstleistung + Rückweg werden notiert', async () => {
+  const { Tweaks, HIGH_PERF } = require('../electron/core/tweaks.cjs');
+  const calls = [];
+  const exec = (cmd, args, _o, cb) => {
+    calls.push(args.join(' '));
+    if (args[0] === '/getactivescheme') return cb(null, 'Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)');
+    if (args[0] === '/list') return cb(null, `381b4222-f694-41f0-9685-ff5bb260df2e (Balanced) *\n${HIGH_PERF}  (High performance)`);
+    cb(null, '');
+  };
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'slimmanager-tw-'));
+  const tw = new Tweaks({ platform: 'win32', dir, exec, spawner: () => ({ stdin: { write() {} }, stdout: { on() {} }, on() {}, exitCode: null }) });
+  tw.cmd = async () => true; // Helfer nicht wirklich starten
+  assert.equal(await tw.power('high'), 'high');
+  assert.ok(calls.includes(`/setactive ${HIGH_PERF}`));
+  assert.ok(JSON.parse(fs.readFileSync(path.join(dir, 'undo.json'), 'utf8')).power[0].includes('381b4222'), 'Rückweg im Notizbuch');
+  calls.length = 0;
+  await tw.restorePower();
+  assert.deepEqual(calls, ['/setactive 381b4222-f694-41f0-9685-ff5bb260df2e']);
+  assert.ok(!fs.existsSync(path.join(dir, 'undo.json')), 'Notizbuch nach dem Zurücksetzen leer');
+});
+
+test('Admin-Helfer-Skript: startet nur angehaltene Dienste neu und wartet auf SlimManager', () => {
+  const { servicesScript, SERVICES } = require('../electron/core/tweaks.cjs');
+  const sc = servicesScript(1234, "C:\\Temp\\it's.flag");
+  assert.match(sc, /\$parent = 1234/);
+  assert.match(sc, /it''s\.flag/, 'Anführungszeichen maskiert');
+  for (const n of SERVICES) assert.ok(sc.includes(`'${n}'`));
+  assert.match(sc, /Get-Process -Id \$parent/);
+  assert.match(sc, /foreach \(\$n in \$stopped\) \{ Start-Service/);
+});
+
+test('Mac: Einfrieren echt – und der Wächter taut nach einem "Absturz" auf', { skip: process.platform === 'win32' }, async () => {
+  const { spawn, execFileSync } = require('node:child_process');
+  const { Tweaks } = require('../electron/core/tweaks.cjs');
+  const child = spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)'], { stdio: 'ignore' });
+  await new Promise((r) => setTimeout(r, 200));
+  const state = () => execFileSync('ps', ['-o', 'stat=', '-p', String(child.pid)]).toString().trim();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'slimmanager-tw-'));
+  // Wächter mit dem normalen Node starten (in der App: Electron im Node-Modus)
+  const tw = new Tweaks({ dir, spawner: (cmd, args, o) => spawn(process.execPath, args, o) });
+  const frozen = await tw.freeze([child.pid]);
+  assert.deepEqual(frozen, [child.pid]);
+  await new Promise((r) => setTimeout(r, 150));
+  assert.match(state(), /T/, 'Prozess ist angehalten');
+  assert.ok(fs.existsSync(path.join(dir, 'undo.json')), 'im Notizbuch');
+  // "Absturz": Verbindung zum Wächter reißt ab
+  tw.watchdog.stdin.destroy();
+  await new Promise((r) => setTimeout(r, 600));
+  assert.doesNotMatch(state(), /T/, 'Wächter hat aufgetaut');
+  // Beim nächsten Start räumt recover() das Notizbuch auf
+  const again = new Tweaks({ dir, spawner: (cmd, args, o) => spawn(process.execPath, args, o) });
+  assert.equal(await again.recover(), true);
+  assert.ok(!fs.existsSync(path.join(dir, 'undo.json')));
+  again.close();
+  child.kill();
 });
 
 test('Spiel-Erkennung nimmt das größte laufende Spiel', () => {
@@ -291,12 +474,12 @@ test('Monitor mit Attrappe: Werte, Verlauf, fehlende Sensoren = null', async () 
   m.static = await m.readStatic();
   assert.equal(m.static.gpu, 'Groß');
   await m.tick();
-  await new Promise((r) => setTimeout(r, 30));
+  m.prevNet.t -= 1000; // eine Sekunde später
   await m.tick();
   assert.equal(m.snap.cpu, 42.4);
   assert.equal(m.snap.ram, 50);
   assert.equal(m.snap.cpuTemp, null);
   assert.equal(m.snap.swap, null);
   assert.ok(m.snap.netDown > 0);
-  assert.equal(m.historyOf(10).cpu.length, 2);
+  assert.equal(m.historyOf(10).cpu.length, 1, 'Verlauf nur im Sekundentakt');
 });
