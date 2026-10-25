@@ -85,13 +85,18 @@ jobs:
         run: node test/smoke.cjs src-tauri/binaries/slimmanager-core-${{ matrix.triple }}
       - name: App + DMG
         env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          S_CERT: ${{ secrets.APPLE_CERTIFICATE }}
+          S_CERT_PW: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          S_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          S_ID: ${{ secrets.APPLE_ID }}
+          S_PW: ${{ secrets.APPLE_PASSWORD }}
+          S_TEAM: ${{ secrets.APPLE_TEAM_ID }}
         run: |
+          # Apple-Zugang nur weitergeben, wenn er wirklich hinterlegt ist (leere Werte lassen Tauri scheitern)
+          if [ -n "$S_CERT" ]; then
+            export APPLE_CERTIFICATE="$S_CERT" APPLE_CERTIFICATE_PASSWORD="$S_CERT_PW" APPLE_SIGNING_IDENTITY="$S_IDENTITY"
+            export APPLE_ID="$S_ID" APPLE_PASSWORD="$S_PW" APPLE_TEAM_ID="$S_TEAM"
+          fi
           npx tauri build --bundles app,dmg
           # Kern so testen, wie er in der fertigen App liegt (neu signiert)
           node test/smoke.cjs src-tauri/target/release/bundle/macos/SlimManager.app/Contents/MacOS/slimmanager-core

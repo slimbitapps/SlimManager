@@ -139,9 +139,25 @@ export async function init() {
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyTheme(get().settings.prefs.theme));
 }
 
+/** Objekte zusammenführen wie der Kern es tut: Unter-Objekte mischen, Listen und Werte ersetzen */
+function mergeDeep<T>(base: T, patch: unknown): T {
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch) || !base || typeof base !== 'object' || Array.isArray(base)) return patch as T;
+  const out: Record<string, unknown> = { ...(base as Record<string, unknown>) };
+  for (const [k, v] of Object.entries(patch)) out[k] = v === undefined ? undefined : mergeDeep(out[k], v);
+  return out as T;
+}
+
+let settingsReq = 0;
+/**
+ * Einstellungen ändern: sofort im Fenster anzeigen und dann beim Kern speichern.
+ * Nur die Antwort auf die LETZTE Änderung wird übernommen – sonst würden schnelle Änderungen hintereinander
+ * (z. B. Größe klicken und gleich den Titel tippen) sich gegenseitig mit altem Stand überschreiben.
+ */
 export async function updateSettings(partial: Partial<Settings> | Record<string, unknown>) {
+  const req = ++settingsReq;
+  set({ settings: mergeDeep(get().settings, partial) });
   const s = await window.api.setSettings(partial);
-  set({ settings: s });
+  if (req === settingsReq) set({ settings: s });
   return s;
 }
 

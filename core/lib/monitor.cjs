@@ -162,7 +162,8 @@ class Monitor extends EventEmitter {
       gpu: main ? main.model : '',
       gpus: gpus.map((g) => g.model),
       os: [osInfo.distro, osInfo.release].filter(Boolean).join(' '),
-      host: os.hostname().split('.')[0], // ohne ".fritz.box" o. Ä.
+      // Testmodus: neutraler Name, damit Screenshots nie den echten Rechnernamen zeigen
+      host: (process.env.SLIMMANAGER_TEST && process.env.SM_HOST) || os.hostname().split('.')[0], // ohne ".fritz.box" o. Ä.
       ramTotal: mem.total || os.totalmem(),
     };
   }

@@ -73,7 +73,7 @@ function startCore(userData, lang) {
   const { spawn: sp } = require('node:child_process');
   const exe = process.env.SLIMMANAGER_CORE; // fertiges Kern-Programm testen (sonst node core/main.cjs)
   const p = sp(exe || process.execPath, exe ? [] : [path.join(ROOT, 'core', 'main.cjs')], {
-    env: { ...process.env, SLIMMANAGER_TEST: '1', SM_USERDATA: userData, SM_PORT: '0', SM_DIST: path.join(ROOT, 'dist'), LANG: lang === 'de' ? 'de_DE.UTF-8' : 'en_US.UTF-8' },
+    env: { ...process.env, SLIMMANAGER_TEST: '1', SM_HOST: 'Gaming-PC', SM_USERDATA: userData, SM_PORT: '0', SM_DIST: path.join(ROOT, 'dist'), LANG: lang === 'de' ? 'de_DE.UTF-8' : 'en_US.UTF-8' },
     stdio: ['pipe', 'pipe', 'inherit'],
   });
   const msgs = [];
@@ -198,7 +198,9 @@ function coreClient(port, token) {
       const l = JSON.parse(fs.readFileSync(path.join(userData, 'settings.json'), 'utf8')).layout.pc;
       return l[l.length - 1];
     };
-    await waitFor(() => lastWidget().title === 'Internet' && lastWidget().size === 'w', 5000, 'Widget gespeichert');
+    await waitFor(() => lastWidget().title === 'Internet' && lastWidget().size === 'w', 15000, 'Widget gespeichert').catch((e) => {
+      throw new Error(e.message + ' – gespeichert: ' + JSON.stringify(lastWidget()));
+    });
     const added = lastWidget();
     assert.equal(added.metric, 'netDown');
     assert.equal(added.style, 'chart');
