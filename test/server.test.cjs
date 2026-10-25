@@ -10,7 +10,7 @@ const WebSocket = require('ws');
 const { RemoteServer } = require('../electron/core/server.cjs');
 const { Pairing, hmac, pairMsg, keyMsg, authMsg, cmdMsg } = require('../electron/core/auth.cjs');
 
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'slimclick-srv-'));
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'slimmanager-srv-'));
 fs.writeFileSync(path.join(root, 'remote.html'), '<!doctype html><title>remote</title>');
 fs.mkdirSync(path.join(root, 'assets'));
 fs.writeFileSync(path.join(root, 'assets', 'a.js'), 'console.log(1)');

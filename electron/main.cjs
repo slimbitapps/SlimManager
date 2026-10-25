@@ -211,8 +211,7 @@ function phoneConfig() {
   return {
     t: 'config',
     look: settings.data.look,
-    layout: settings.data.layout.phone || settings.data.layout.pc,
-    phoneLayout: !!settings.data.layout.phone,
+    layout: settings.data.layout.phone, // null = Standard-Handy-Layout
     control: settings.data.remote.allowControl,
     overlay: settings.data.overlay.enabled,
     lang: settings.data.prefs.lang || 'en',

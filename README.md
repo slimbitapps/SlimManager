@@ -1,121 +1,102 @@
-# SlimClick – your phone as a presentation remote
+# SlimManager – the modern task manager for gamers
 
-**Scan a QR code and control PowerPoint, Keynote, Google Slides or PDF from your phone. No app install on the phone.**
-Free · no ads · no account · works on school Wi-Fi (via phone hotspot) · only your phone can control it.
+**A good-looking, fully customizable task manager for Windows & Mac – with Game Boost and live stats on your phone or tablet.**
+Free · no ads · no account · no cloud · scan a QR code and your phone becomes a second screen.
 
-⬇️ **[Download SlimClick](https://slimbitapps.github.io/SlimClick/)** · by [SlimBit Apps](https://slimbitapps.github.io/)
+⬇️ **[Download SlimManager](https://slimbitapps.github.io/SlimManager/)** · by [SlimBit Apps](https://slimbitapps.github.io/)
 
-![SlimClick on the laptop shows a QR code](marketing/screenshots/en-1-hero.png)
+## Why SlimManager?
 
-## Why SlimClick?
-
-- **No app on the phone** – the camera scans the QR code, a web page opens. Works with any iPhone or Android.
-- **Every presentation program** – SlimClick presses the same keys as a real clicker: PowerPoint, Keynote, Google Slides, LibreOffice, Canva, PDF.
-- **Laser pointer & spotlight** – touch the slide preview on your phone; the red dot appears exactly there on the projector.
-- **Slide preview on the phone** – see what the audience sees, even when you face them.
-- **Timer with a silent warning** – the phone screen flashes 5, 2 and 1 minute before the end.
-- **Go to slide, black screen, start/end presentation** – all on the phone.
-- **Secure** – one-time key in the QR code (never sent over the network), every command signed, extra devices need your approval.
-- **School Wi-Fi** – built-in step-by-step hotspot guide; the QR code updates by itself when the network changes.
-- English, German, French, Spanish, Italian · light & dark theme · simple and pro mode.
-
-<p>
-  <img src="marketing/raw/en/22-phone-laser.png" width="260" alt="Laser pointer on the phone" />
-  <img src="marketing/raw/en/24-phone-timer.png" width="260" alt="Timer on the phone" />
-</p>
+- **Your dashboard, your style** – drag & drop widgets (gauges, graphs, bars, big numbers, top processes, clock, network, drives, CPU cores, PC info, battery, custom text). Pick size, color and title for each.
+- **6 skins** – Neon, Glass, Clean, Retro (looks like Windows back in the day), Terminal, Sunset. Backgrounds (Aurora, Space, Synthwave, Waves, Carbon) or **your own image**, accent color, corner radius, fonts, animated RGB border.
+- **On your phone or tablet** – scan the QR code (or type the address + 6-digit PIN). No app install. Your phone gets its own layout; a tablet makes a perfect second screen.
+- **Control from your phone** – end tasks, change priority, start Game Boost, toggle the overlay.
+- **Game Boost** – one click (or Ctrl+Shift+B, or automatically when a game starts): game gets priority, background apps step back, apps from your list are closed. Everything is reset afterwards – with a summary.
+- **Clean up** – close background programs you don't need in one go. System processes are protected.
+- **Mini overlay** – a small always-on-top stats bar (Ctrl+Shift+O) over games in borderless mode.
+- **Alerts** when your PC gets too hot or memory runs full · share layouts as a file · English & German · light/dark · simple & pro mode.
 
 ## Install
 
-- **Windows 10/11:** download `SlimClick-Setup.exe` and double-click it. No admin rights? Use `SlimClick-Windows-portable.zip`.
-- **Mac (macOS 12+):** open `SlimClick-Mac.dmg` (Intel: `SlimClick-Mac-Intel.dmg`) and drag SlimClick into Applications.
+- **Windows 10/11:** download `SlimManager-Setup.exe` and double-click it. No admin rights? Use `SlimManager-Windows-portable.zip`.
+- **Mac (macOS 12+):** open `SlimManager-Mac.dmg` (Intel: `SlimManager-Mac-Intel.dmg`) and drag SlimManager into Applications.
 
 ---
 
-# SlimClick (Deutsch)
+# SlimManager (Deutsch)
 
-Dein Handy als Präsentations-Fernbedienung – für Windows und Mac. QR-Code scannen und los.
+Der moderne Task-Manager für Gamer – für Windows und Mac. Komplett anpassbar, mit Game Boost und Live-Werten aufs Handy.
 
 **Alles bleibt lokal.** Keine Datensammlung, kein Konto, kein Internet nötig.
 
 ## Installieren
 
-**Am einfachsten über die [Download-Seite](https://slimbitapps.github.io/SlimClick/)**: Sie erkennt dein System und erklärt die Installation.
+**Am einfachsten über die [Download-Seite](https://slimbitapps.github.io/SlimManager/)** – sie erkennt dein System.
 
-- **Windows:** `SlimClick-Setup.exe` doppelklicken. Beim ersten Start fragt die Firewall → **„Zugriff zulassen“**.
-- **Mac:** `SlimClick-Mac.dmg` öffnen, Symbol auf „Programme“ ziehen. Die App führt dich durch zwei Erlaubnisse
-  (**Bedienungshilfen** = Pflicht, **Bildschirmaufnahme** = für die Vorschau).
+- **Windows:** `SlimManager-Setup.exe` doppelklicken. Beim ersten Start fragt die Firewall → **„Zugriff zulassen“** (nur nötig für die Handy-Anzeige).
+- **Mac:** `SlimManager-Mac.dmg` öffnen, Symbol auf „Programme“ ziehen.
 
 ## So funktioniert's
 
-Beim ersten Start: **Sprache**, **Aussehen**, **Bedienung** (Einfach/Profi), am Mac die **Erlaubnisse**, dann eine kurze Anleitung.
+Beim ersten Start: **Sprache**, **hell/dunkel**, **Skin**, **Bedienung** (Einfach/Profi), kurze Tour.
 
-1. **QR-Code scannen** – mit der normalen Kamera-App. Es öffnet sich eine Webseite.
-2. **Präsentation starten** – PowerPoint, Keynote, Google Slides oder PDF im Vollbild. Einmal ins Fenster klicken.
-3. **Am Handy „Weiter“ tippen.**
-
-| Am Handy | Wirkung |
+| Bereich | Was du dort machst |
 |---|---|
-| Weiter / Zurück (oder auf der Vorschau wischen) | Nächste / vorige Folie |
-| Laser | Auf die Vorschau tippen → roter Punkt auf dem Beamer |
-| Spotlight | Nur eine Stelle bleibt hell |
-| Schwarz | Bildschirm schwarz (nochmal = zurück) |
-| Gehe zu | Foliennummer eintippen |
-| Timer | Countdown oder Stoppuhr, Bildschirm blinkt bei 5/2/1 Min. und am Ende |
-| ⋯ Mehr | Präsentation starten (PowerPoint, Keynote, Google Slides, PDF), beenden, erste/letzte Folie, weiß, Linkshänder-Modus |
+| **Dashboard** | Live-Werte. „Anpassen“: Widgets hinzufügen, ziehen, Größe/Farbe/Darstellung wählen. „Aussehen“: Skin, Hintergrund, eigenes Bild |
+| **Prozesse** | Apps statt hunderter Prozesse, sortieren, suchen, beenden, Priorität ändern, „Aufräumen“ |
+| **Game Boost** | Spiel wählen → Boost. Automatisch beim Spielstart, Tastenkürzel, Liste „Beim Boost schließen“ |
+| **Handy & Tablet** | QR-Code scannen oder Adresse + PIN eintippen. Eigenes Handy-Layout, Rechte (nur ansehen / steuern) |
 
-**Ausprobieren ohne PowerPoint:** In der App „Testfolien öffnen“.
+## Ehrlich gesagt
 
-## Schul-WLAN
-
-Viele Schul- und Firmen-WLANs trennen Geräte voneinander. Dann: **Hotspot am Handy einschalten → Laptop damit
-verbinden → QR-Code neu scannen.** Die App erkennt den Wechsel selbst und zeigt eine Anleitung (oben „Hotspot-Anleitung“).
-Meldet sich 40 Sekunden lang kein Handy, schlägt die App das von selbst vor.
+- **Temperaturen** geben Windows und macOS oft nur mit Admin-Rechten oder Zusatz-Treibern frei. NVIDIA-Karten liefern sie trotzdem.
+  Fehlt ein Wert, tauscht das Standard-Layout die Kachel automatisch gegen einen vorhandenen Wert.
+- **Game Boost am Mac:** Ohne Admin-Rechte darf eine App andere nur bremsen, nicht hochstufen. SlimManager nutzt dafür den
+  Hintergrund-Modus von macOS (`taskpolicy`), der sich danach sauber wieder aufheben lässt.
+- **FPS** gibt es noch nicht (siehe Plan, Version 2).
 
 ## Sicherheit
 
-- Der QR-Code enthält einen **geheimen Einmal-Schlüssel** im `#`-Teil der Adresse – der wird vom Browser **nie übers WLAN gesendet**.
-- Daraus leiten Handy und Laptop einen **Geräte-Schlüssel** ab (wird ebenfalls nie übertragen). Danach ist der QR-Code ungültig.
-- **Jeder Befehl ist signiert und nummeriert** (HMAC-SHA256) → nichts fälschbar, nichts wiederholbar.
-- Ist schon ein Handy verbunden, muss jedes weitere **am Laptop zugelassen** werden.
+- QR-Code mit **Einmal-Code** im `#`-Teil der Adresse (wird nie übers WLAN gesendet) – oder **6-stellige PIN**, die nach jedem Fehlversuch wechselt.
+- Daraus leiten Handy und PC einen **Geräte-Schlüssel** ab (nie übertragen). **Jeder Befehl ist signiert und nummeriert** (HMAC-SHA256).
+- Weitere Geräte müssen **am PC zugelassen** werden. „Handy darf steuern“ lässt sich ausschalten (nur ansehen).
 - Nur Geräte aus dem **lokalen Netz**, nur IP-Adressen als Host (Schutz vor DNS-Rebinding), Sperre nach 5 Fehlversuchen.
-- Gekoppelte Geräte siehst und entfernst du unter **Einstellungen → Sicherheit**.
+- **Systemprozesse sind geschützt** – weder am PC noch vom Handy beendbar oder bremsbar.
 
 ---
 
 ## Stand der Entwicklung
 
-**Version 1.0** – Weiter/Zurück, Wischen, Gehe zu, Schwarz/Weiß, Präsentation starten/beenden, Laserpointer & Spotlight,
-Folienvorschau, Timer (Countdown/Stoppuhr, Aufblitzen als Warnung), sichere Kopplung, Zustimmung für weitere Geräte,
-Hotspot-Anleitung, Testfolien, Querformat, Linkshänder-Modus, Laptop wach halten, 5 Sprachen, hell/dunkel, Einfach/Profi.
+**Version 1.0** – Dashboard mit 10 Widget-Arten und 4 Darstellungen, Drag & Drop, 6 Skins, Hintergründe + eigenes Bild,
+Layouts teilen, Prozesse (gruppiert/einzeln, Symbole, beenden, Priorität, Aufräumen), Game Boost (manuell/automatisch/Tastenkürzel,
+Schließ-Liste, eigene Spiele, Zusammenfassung), Handy/Tablet (QR + PIN, eigenes Layout, Steuern, Zustimmung), Mini-Anzeige,
+Warnungen, Taskleisten-Symbol, Deutsch/Englisch, hell/dunkel, Einfach/Profi.
 
-**Als Nächstes (Version 2):** Sprechernotizen aus der PowerPoint-Datei – siehe [docs/PLAN.md](docs/PLAN.md).
-
-Veröffentlichen & bekannt machen: [docs/VEROEFFENTLICHEN.md](docs/VEROEFFENTLICHEN.md) · Texte für Portale: [docs/STORE-TEXTE.md](docs/STORE-TEXTE.md)
+**Als Nächstes:** siehe [docs/PLAN.md](docs/PLAN.md).
 
 ---
 
 ## Für Entwickler
 
-Technik: Electron (Fenster, Server, Tastendrücke), React + TypeScript (Laptop-Oberfläche), Vite (Bauen).
-Die Handy-Seite ist bewusst ohne Framework (lädt sofort).
+Technik: Electron (Fenster, Server, Prozesse), React + TypeScript (PC-Fenster **und** Handy-Seite – gleiche Widgets), Vite,
+[systeminformation](https://github.com/sebhildebrandt/systeminformation) für die Messwerte.
 
 ```bash
 npm install
 npm start            # App bauen und starten
-npm test             # Sicherheits- und Logiktests
+npm test             # Logik- und Sicherheitstests
 npm run test:e2e     # echte App automatisch durchklicken (inkl. Handy-Fenster, Screenshots)
 npm run icons        # Logo und Symbole neu erzeugen
-npm run dist:win     # Windows-Installer (auf Windows)
-npm run dist:mac     # Mac-DMG (auf einem Mac)
+bash scripts/test-build.sh   # Testversion: Mac-DMG + Windows-ZIP
 ```
 
 Aufbau:
-- `electron/core/` – Logik ohne Oberfläche: Server (`server.cjs`), Kopplung (`auth.cjs`), Tastendrücke (`keys.cjs`),
-  Netzwerk-Auswahl (`network.cjs`), Timer, Einstellungen
-- `electron/main.cjs` – Fenster, Laserpointer-Ebene, Folienvorschau, Verbindung zur Oberfläche
-- `src/` – Laptop-Oberfläche (React); Texte in `src/locales/`
-- `src/remote/` – Handy-Seite · `src/overlay/` – Laserpunkt · `src/demo/` – Testfolien · `src/shared/hmac.ts` – Signatur
+- `electron/core/` – Logik ohne Oberfläche: Messwerte (`monitor.cjs`), Prozesse & Prioritäten (`procs.cjs`), Game Boost (`boost.cjs`),
+  Server (`server.cjs`), Kopplung (`auth.cjs`), Netzwerk, Einstellungen, Layout-Prüfung (`layout.cjs`)
+- `electron/main.cjs` – Fenster, Mini-Anzeige, Taskleiste, Tastenkürzel, Verbindung zur Oberfläche
+- `src/shared/` – Widgets, Dashboard, Skins (`dashboard.css`) – von PC-Fenster und Handy gemeinsam genutzt
+- `src/components/` – PC-Fenster (React), Texte in `src/locales/`
+- `src/remote/` – Handy-Seite · `src/overlay/` – Mini-Anzeige
 - `test/` – automatische Tests · `brand/` – Logo · `website/` – Download-Seite
 
-Installer werden per GitHub Actions automatisch gebaut (`.github/workflows/build.yml`) – nur bei Code-Änderungen,
-nicht bei Texten, Bildern oder der Website.
+Installer werden per GitHub Actions gebaut (`.github/workflows/build.yml`) – nur bei Code-Änderungen.
