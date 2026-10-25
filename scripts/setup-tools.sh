@@ -1,6 +1,7 @@
 #!/bin/bash
 # Richtet alle Werkzeuge für SlimBit-Apps EINMAL dauerhaft ein – ohne Admin-Rechte, nur im eigenen Benutzerordner.
 #   bash scripts/setup-tools.sh            → ~/SlimBit-Tools (Node.js, ffmpeg, ffprobe, GitHub-CLI, Python-Pakete)
+#   WITH_RUST=1 bash scripts/setup-tools.sh → zusätzlich Rust (für Tauri-Apps)
 #   . ~/SlimBit-Tools/env.sh               → Werkzeuge im aktuellen Terminal benutzen
 # Jeder Download wird mit der offiziellen Prüfsumme kontrolliert. Mehrfach ausführen ist ungefährlich.
 set -e
@@ -29,11 +30,21 @@ if [ ! -x "$T/bin/ffmpeg" ]; then
   ln -sf "$T/media/node_modules/ffprobe-static/bin/darwin/$NA/ffprobe" bin/ffprobe
 fi
 
+# Rust (für Tauri-Apps) – offizieller Installer, nur im Benutzerordner (~/SlimBit-Tools/rust), Prüfsumme wird kontrolliert
+export RUSTUP_HOME="$T/rust/rustup" CARGO_HOME="$T/rust/cargo"
+if [ "${WITH_RUST:-0}" = 1 ] && [ ! -x "$CARGO_HOME/bin/cargo" ]; then
+  [ "$ARCH" = arm64 ] && RT=aarch64-apple-darwin || RT=x86_64-apple-darwin
+  curl -fsSLo rustup-init "https://static.rust-lang.org/rustup/dist/$RT/rustup-init"
+  echo "$(curl -fsSL "https://static.rust-lang.org/rustup/dist/$RT/rustup-init.sha256" | cut -d' ' -f1)  rustup-init" | shasum -a 256 -c -
+  chmod +x rustup-init && ./rustup-init -y --no-modify-path --profile minimal >/dev/null && rm rustup-init
+fi
+
 python3 -m pip install --user -q numpy pillow 2>/dev/null || true
 python3 -m pip install --user -q --only-binary :all: pocketsphinx 2>/dev/null || true
 
 cat > "$T/env.sh" <<EOF
-export PATH="$T/bin:$T/node/bin:\$PATH"
+export RUSTUP_HOME="$T/rust/rustup" CARGO_HOME="$T/rust/cargo"
+export PATH="$T/bin:$T/node/bin:$T/rust/cargo/bin:\$PATH"
 EOF
 echo "Fertig: $(node -v) · $(ffmpeg -version | head -1 | cut -d' ' -f1-3) · $(gh --version | head -1)"
 gh auth status >/dev/null 2>&1 && echo "GitHub: angemeldet" || echo "GitHub: noch nicht angemeldet → einmal ausführen:  ~/SlimBit-Tools/bin/gh auth login --web --git-protocol https"

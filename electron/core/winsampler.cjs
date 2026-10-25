@@ -59,6 +59,17 @@ while ($true) {
     foreach ($k in @($paths.Keys)) { if (-not $seen.ContainsKey($k)) { $paths.Remove($k) } }
     [Console]::Out.Write($sb.ToString())
     [Console]::Out.WriteLine('END')
+  } elseif ($line.StartsWith('I ')) {
+    # Programm-Symbol als PNG (Base64)
+    $b64 = ''
+    try {
+      Add-Type -AssemblyName System.Drawing
+      $ic = [System.Drawing.Icon]::ExtractAssociatedIcon($line.Substring(2))
+      $ms = New-Object System.IO.MemoryStream
+      $ic.ToBitmap().Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
+      $b64 = [Convert]::ToBase64String($ms.ToArray())
+    } catch {}
+    [Console]::Out.WriteLine('ICON ' + $b64)
   } elseif ($line -eq 'G') {
     $per = @{}; $tot = 0
     foreach ($e in Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine) {
@@ -200,14 +211,26 @@ class WinSampler {
         if (i < 0) return;
         const line = this.buf.slice(0, i);
         this.buf = this.buf.slice(i + 1);
-        if (!line.startsWith('GPU')) continue; // Begrüßungstext o. Ä. überspringen
+        if (!line.startsWith(q.kind === 'I' ? 'ICON' : 'GPU')) continue; // Begrüßungstext o. Ä. überspringen
         this.queue.shift();
         q.resolve(line);
       }
     }
   }
 
-  ask(kind, timeout = 10000) {
+  /** Programm-Symbol einer .exe als data:-URL */
+  async icon(file) {
+    if (!/^[a-z]:\\[^\r\n]+\.exe$/i.test(String(file))) return null;
+    const line = await this.askLine('I', 'I ' + file);
+    const b64 = line ? line.trim().slice(5) : '';
+    return b64 ? 'data:image/png;base64,' + b64 : null;
+  }
+
+  askLine(kind, command) {
+    return this.ask(kind, 10000, command);
+  }
+
+  ask(kind, timeout = 10000, command = kind) {
     const p = this.ensure();
     return new Promise((resolve) => {
       const entry = { kind, resolve: () => {} };
@@ -222,7 +245,7 @@ class WinSampler {
       };
       this.queue.push(entry);
       try {
-        p.stdin.write(kind + '\r\n');
+        p.stdin.write(command + '\r\n');
       } catch {
         entry.resolve(null);
       }

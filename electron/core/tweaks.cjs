@@ -241,7 +241,15 @@ class Tweaks {
     if (this.win) return null;
     if (this.watchdog && this.watchdog.exitCode === null) return this.watchdog;
     try {
-      const p = this.spawner(process.execPath, [path.join(__dirname, 'watchdog.cjs')], {
+      // Als eigenständiges Programm (Tauri-Version) startet sich der Kern selbst im Wächter-Modus,
+      // sonst (Node/Electron) wird die Wächter-Datei direkt ausgeführt
+      let sea = false;
+      try {
+        sea = require('node:sea').isSea();
+      } catch {
+        /* ältere Node-Version */
+      }
+      const p = this.spawner(process.execPath, sea ? ['--watchdog'] : [path.join(__dirname, 'watchdog.cjs')], {
         stdio: ['pipe', 'ignore', 'ignore'],
         env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
       });
