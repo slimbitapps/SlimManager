@@ -152,12 +152,6 @@
   border-radius: 50%;
   background: #22c55e;
   box-shadow: 0 0 8px #22c55e;
-  animation: livepulse 1.6s ease-in-out infinite;
-}
-@keyframes livepulse {
-  50% {
-    opacity: 0.4;
-  }
 }
 .side-mini {
   margin-top: auto;
@@ -194,7 +188,6 @@
   display: block;
   height: 100%;
   background: linear-gradient(90deg, #8b5cf6, #06b6d4);
-  transition: width 0.6s;
 }
 .mini-bar i.hot {
   background: var(--danger);

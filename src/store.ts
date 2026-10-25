@@ -103,6 +103,8 @@ export async function init() {
     // Infos zum PC kommen kurz nach dem Start
     if (!get().sys) set({ sys: await window.api.sysStatic() });
   });
+  // Fenster war versteckt/minimiert (dann kommen keine Live-Daten) → Verlauf neu übernehmen
+  window.api.on('sync', (d: { snap: Stats | null; history: History }) => set({ stats: d.snap, history: d.history }));
   window.api.on('procs', (procs: ProcData) => set({ procs }));
   window.api.on('boost', (boost: BoostState) => set({ boost }));
   window.api.on('boost-summary', (summary: BoostSummary) => set({ summary }));

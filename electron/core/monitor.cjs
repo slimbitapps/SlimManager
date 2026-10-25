@@ -1,7 +1,8 @@
 'use strict';
 /**
  * Sammelt die Messwerte des Computers (CPU, RAM, GPU, Netzwerk, Festplatte, Akku, Prozesse).
- *  - Schnelle Werte jede Sekunde, langsame seltener (spart selbst Rechenleistung).
+ *  - Sparsam: Schnelle Werte jede Sekunde nur, solange jemand zuschaut (Fenster offen, Handy, Mini-Anzeige),
+ *    sonst alle 5 Sekunden. Langsame Werte alle 15 s. GPU- und Prozess-Abfragen nur bei Bedarf.
  *  - Verlauf der letzten 5 Minuten für die Diagramme.
  *  - Jeder Messwert darf fehlen (null) – z. B. Temperaturen ohne Admin-Rechte.
  */
@@ -51,7 +52,9 @@ class Monitor extends EventEmitter {
     this.static = null;
     this.procs = [];
     this.procsAt = 0;
-    this.procWanted = 0; // > 0 → Prozesse häufig messen
+    this.procLevel = 'off'; // 'fast' = alle 2 s, 'slow' = alle 10 s (Spiel-Erkennung), 'off' = gar nicht
+    this.live = true; // schaut gerade jemand zu?
+    this.tickN = 0;
     this.slow = { disks: [], battery: null, cpuTemp: null, procCount: null };
     this.gpu = { util: null, temp: null, memUsed: null, memTotal: null };
     this.prevNet = null;
@@ -76,21 +79,37 @@ class Monitor extends EventEmitter {
     await this.tick();
     this.slowTick();
     this.procTick();
-    this.timers.push(setInterval(() => this.tick(), this.interval));
+    this.loop();
     this.timers.push(setInterval(() => this.slowTick(), 15_000));
     this.timers.push(setInterval(() => this.procTick(), 2_000));
     this.startGpu();
+  }
+
+  /** Nächste Messung planen: 1 s, wenn jemand zuschaut, sonst 5 s */
+  loop() {
+    clearTimeout(this.loopTimer);
+    if (!this.running) return;
+    this.loopTimer = setTimeout(async () => {
+      await this.tick();
+      this.loop();
+    }, this.live ? this.interval : 5000);
+  }
+
+  /** Schaut jemand zu? Ohne Zuschauer misst SlimManager seltener und fragt die GPU gar nicht ab. */
+  setLive(on) {
+    on = !!on;
+    if (on === this.live) return;
+    this.live = on;
+    if (this.platform === 'win32') on ? this.startWinGpu() : this.stopWinGpu();
+    if (on && this.running) this.loop(); // sofort wieder schnell
   }
 
   stop() {
     this.running = false;
     this.timers.forEach(clearInterval);
     this.timers = [];
-    try {
-      this.gpuProc?.kill();
-    } catch {
-      /* egal */
-    }
+    clearTimeout(this.loopTimer);
+    this.stopWinGpu();
     if (this.platform === 'win32') {
       try {
         this.si.powerShellRelease?.();
@@ -100,11 +119,15 @@ class Monitor extends EventEmitter {
     }
   }
 
-  /** Prozessliste häufiger messen, solange jemand zuschaut (Liste offen, Handy, Boost). */
-  setWanted(on) {
-    const was = this.procWanted;
-    this.procWanted = on ? 1 : 0;
-    if (on && !was && this.running && Date.now() - this.procsAt > 1500) this.procTick(true);
+  /**
+   * Wie oft die Prozessliste gebraucht wird: 'fast' (Liste offen, Handy, Boost), 'slow' (nur automatische
+   * Spiel-Erkennung) oder 'off'. Die Liste ist die teuerste Messung – deshalb so selten wie möglich.
+   */
+  setWanted(level) {
+    level = level === true ? 'fast' : level === 'slow' ? 'slow' : level ? 'fast' : 'off';
+    const was = this.procLevel;
+    this.procLevel = level;
+    if (level === 'fast' && was !== 'fast' && this.running && Date.now() - this.procsAt > 1500) this.procTick(true);
   }
 
   // ------------------------------------------------------------------ Feste Daten
@@ -138,18 +161,22 @@ class Monitor extends EventEmitter {
     this.busy = true;
     try {
       const safe = (p) => Promise.resolve().then(p).catch(() => null);
+      const win = this.platform === 'win32';
+      // Windows: Netzwerk/Speicher kosten dort je eine WMI-Abfrage → Netzwerk nur jede 2. Messung,
+      // RAM direkt vom System (Auslagerung kommt mit den langsamen Werten)
+      const netNow = !win || !this.live || this.tickN++ % 2 === 0;
       const [load, mem, net, disk, speed] = await Promise.all([
         safe(() => this.si.currentLoad()),
-        safe(() => this.si.mem()),
-        safe(() => this.si.networkStats('*')),
-        safe(() => this.si.disksIO()),
+        win ? Promise.resolve({ total: os.totalmem(), active: os.totalmem() - os.freemem(), swaptotal: this.slow.swapTotal, swapused: this.slow.swapUsed }) : safe(() => this.si.mem()),
+        netNow ? safe(() => this.si.networkStats('*')) : Promise.resolve(null),
+        win ? Promise.resolve(null) : safe(() => this.si.disksIO()),
         safe(() => this.si.cpuCurrentSpeed()),
       ]);
       const now = Date.now();
 
       // Netzwerk: alle echten Adapter zusammenzählen
-      let netDown = null;
-      let netUp = null;
+      let netDown = netNow ? null : this.snap?.netDown ?? null;
+      let netUp = netNow ? null : this.snap?.netUp ?? null;
       if (Array.isArray(net) && net.length) {
         const rx = net.reduce((s, n) => s + (Number(n.rx_bytes) || 0), 0);
         const tx = net.reduce((s, n) => s + (Number(n.tx_bytes) || 0), 0);
@@ -211,7 +238,17 @@ class Monitor extends EventEmitter {
   // ------------------------------------------------------------------ Langsame Werte (alle 15 s)
   async slowTick() {
     const safe = (p) => Promise.resolve().then(p).catch(() => null);
-    const [fs, bat, temp] = await Promise.all([safe(() => this.si.fsSize()), safe(() => this.si.battery()), safe(() => this.si.cpuTemperature())]);
+    const win = this.platform === 'win32';
+    const [fs, bat, temp, mem] = await Promise.all([
+      safe(() => this.si.fsSize()),
+      safe(() => this.si.battery()),
+      safe(() => this.si.cpuTemperature()),
+      win ? safe(() => this.si.mem()) : Promise.resolve(null),
+    ]);
+    if (mem) {
+      this.slow.swapTotal = mem.swaptotal || 0;
+      this.slow.swapUsed = mem.swapused || 0;
+    }
     if (Array.isArray(fs)) this.slow.disks = cleanDisks(fs, this.platform);
     this.slow.battery = bat && bat.hasBattery ? { pct: round(bat.percent, 0), charging: !!bat.isCharging, plugged: !!bat.acConnected } : null;
     const tc = temp && (temp.main || temp.max);
@@ -220,8 +257,10 @@ class Monitor extends EventEmitter {
 
   // ------------------------------------------------------------------ Prozesse
   async procTick(force = false) {
-    // Ohne Zuschauer nur alle 10 s (für die automatische Spiel-Erkennung)
-    if (!force && !this.procWanted && Date.now() - this.procsAt < 9_500) return;
+    if (!force) {
+      if (this.procLevel === 'off') return;
+      if (this.procLevel === 'slow' && Date.now() - this.procsAt < 9_500) return;
+    }
     if (this.procBusy) return;
     this.procBusy = true;
     try {
@@ -241,6 +280,7 @@ class Monitor extends EventEmitter {
   startGpu() {
     if (this.platform === 'darwin') {
       const read = () =>
+        this.live &&
         execFile('ioreg', ['-r', '-d', '1', '-w', '0', '-c', 'IOAccelerator'], { timeout: 4000, maxBuffer: 4 * 1024 * 1024 }, (err, out) => {
           if (err) return;
           const g = parseIoreg(String(out));
@@ -249,7 +289,7 @@ class Monitor extends EventEmitter {
         });
       read();
       this.timers.push(setInterval(read, 2000));
-    } else if (this.platform === 'win32') {
+    } else if (this.platform === 'win32' && this.live) {
       this.startWinGpu();
     }
     // NVIDIA-Karten liefern über nvidia-smi auch Temperatur und Speicher (Windows & Linux)
@@ -268,6 +308,7 @@ class Monitor extends EventEmitter {
       smi();
       this.timers.push(
         setInterval(() => {
+          if (!this.live) return;
           if (!this.hasSmi && this.noSmi > 0) return; // kein NVIDIA → nicht ständig probieren
           smi();
         }, 2000),
@@ -280,6 +321,7 @@ class Monitor extends EventEmitter {
    * funktionieren. Die WMI-Klassennamen sind (anders als Get-Counter) in jeder Windows-Sprache gleich.
    */
   startWinGpu() {
+    if (this.gpuProc) return;
     const script = [
       '$ErrorActionPreference="SilentlyContinue"',
       'while($true){',
@@ -287,7 +329,7 @@ class Monitor extends EventEmitter {
       ' $u=($e | Measure-Object -Property UtilizationPercentage -Sum).Sum',
       ' $m=(Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUAdapterMemory | Measure-Object -Property DedicatedUsage -Maximum).Maximum',
       ' [Console]::Out.WriteLine("GPU " + [int]$u + " " + [int64]$m)',
-      ' Start-Sleep -Milliseconds 1500',
+      ' Start-Sleep -Milliseconds 2000',
       '}',
     ].join('\n');
     try {
@@ -307,8 +349,19 @@ class Monitor extends EventEmitter {
         }
       });
       p.on('error', () => {});
+      p.on('exit', () => this.gpuProc === p && (this.gpuProc = null));
     } catch {
       /* ohne GPU-Werte weiter */
+    }
+  }
+
+  stopWinGpu() {
+    const p = this.gpuProc;
+    this.gpuProc = null;
+    try {
+      p?.kill();
+    } catch {
+      /* egal */
     }
   }
 

@@ -448,6 +448,7 @@ export function LookPanel({ compact }: { compact?: boolean }) {
             <span>{t('look.anim')}</span>
             <Switch on={look.anim} onChange={(anim) => set({ anim })} />
           </div>
+          {(look.anim || look.rgb) && <p className="faint small">{t('look.animNote')}</p>}
         </>
       )}
     </div>

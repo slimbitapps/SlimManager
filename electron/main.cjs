@@ -52,6 +52,10 @@ const pairing = new Pairing({
     pushInfo();
   },
 });
+// Sparsam: SlimManager zeichnet ohne Grafikkarte (die gehört dem Spiel). Für ein Dashboard, das sich einmal
+// pro Sekunde ändert, reicht der Prozessor locker. Umschaltbar unter Einstellungen → Allgemein.
+if (!settings.data.app.gpu) app.disableHardwareAcceleration();
+
 const monitor = new Monitor();
 const boost = new Boost();
 
@@ -68,6 +72,22 @@ const alertAt = {};
 
 function send(channel, payload) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
+}
+/** Ist das Hauptfenster gerade zu sehen? Sonst bekommt es keine Live-Daten (nichts wird umsonst gezeichnet). */
+function winVisible() {
+  return !!(win && !win.isDestroyed() && win.isVisible() && !win.isMinimized());
+}
+/** Fenster wieder sichtbar → Verlauf und aktuelle Werte einmal nachliefern */
+function syncWindow() {
+  updateLive();
+  updateProcWanted();
+  if (!winVisible()) return;
+  send('sync', { snap: monitor.snap, history: monitor.historyOf(300) });
+  if (rendererWantsProcs && procCache.at) send('procs', procCache);
+}
+/** Misst schnell, solange jemand zuschaut (Fenster, Handy, Mini-Anzeige) – sonst im Sparmodus */
+function updateLive() {
+  monitor.setLive(winVisible() || (server ? server.clients().length : 0) > 0 || !!(overlay && !overlay.isDestroyed()));
 }
 function isDark(theme) {
   return theme === 'dark' || (theme !== 'light' && nativeTheme.shouldUseDarkColors);
@@ -129,6 +149,8 @@ function createWindow() {
   };
   win.on('resized', remember);
   win.on('moved', remember);
+  for (const ev of ['show', 'restore', 'focus']) win.on(ev, syncWindow);
+  for (const ev of ['hide', 'minimize']) win.on(ev, () => (updateLive(), updateProcWanted()));
   win.on('close', (e) => {
     // "Im Hintergrund weiterlaufen": Fenster nur verstecken, Taskleisten-Symbol bleibt
     if (!quitting && settings.data.app.closeToTray && tray && !isTest) {
@@ -231,7 +253,7 @@ async function startServer() {
     needsApproval: () => settings.data.remote.approveNew,
   });
   server.on('code', pushInfo);
-  server.on('clients', pushInfo);
+  server.on('clients', () => (pushInfo(), updateLive()));
   server.on('subs', updateProcWanted);
   server.on('joined', (deviceId) => {
     server.sendTo(deviceId, phoneConfig());
@@ -299,7 +321,7 @@ function onProcs(list) {
   const flat = normalize(list, { cores: monitor.static?.cores || os.cpus().length, selfPids: selfPids(), games: settings.data.boost.games });
   const groups = group(flat).sort((x, y) => y.cpu - x.cpu || y.mem - x.mem);
   procCache = { flat, groups, at: Date.now() };
-  if (rendererWantsProcs) send('procs', procCache);
+  if (rendererWantsProcs && winVisible()) send('procs', procCache);
   if (server && server.subscribers('procs')) server.broadcast({ t: 'procs', p: phoneGroups(groups) }, 'procs');
   boost.follow(flat);
   autoBoost(groups);
@@ -314,8 +336,8 @@ function phoneGroups(groups) {
 }
 
 function updateProcWanted() {
-  const want = rendererWantsProcs || (server ? server.subscribers('procs') : 0) > 0 || settings.data.boost.auto || boost.active;
-  monitor.setWanted(want);
+  const fast = (rendererWantsProcs && winVisible()) || (server ? server.subscribers('procs') : 0) > 0 || boost.active;
+  monitor.setWanted(fast ? 'fast' : settings.data.boost.auto ? 'slow' : 'off');
 }
 
 function findGroup(id) {
@@ -409,6 +431,7 @@ function autoBoost(groups) {
 }
 
 boost.on('change', (st) => {
+  ownPriority(st.active);
   send('boost', st);
   server?.broadcast({ t: 'boost', b: st });
   buildTrayMenu();
@@ -420,6 +443,14 @@ boost.on('summary', (sum) => {
   send('boost-summary', sum);
   server?.broadcast({ t: 'boost-summary', s: sum });
 });
+
+/** Während des Boosts tritt SlimManager selbst zurück (Windows: "niedriger als normal"; am Mac nicht umkehrbar → nein) */
+let ownLowered = false;
+function ownPriority(low) {
+  if (process.platform !== 'win32' || low === ownLowered) return;
+  ownLowered = low;
+  for (const pid of selfPids()) setPriority(pid, low ? 'below' : 'normal');
+}
 
 // ------------------------------------------------------------------ Mini-Anzeige (immer im Vordergrund)
 function overlayBounds(w = 220, h = 40) {
@@ -458,11 +489,12 @@ function setOverlay(on) {
     overlay.setIgnoreMouseEvents(true);
     overlay.setAlwaysOnTop(true, 'screen-saver');
     if (isMac) overlay.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-    overlay.on('closed', () => (overlay = null));
+    overlay.on('closed', () => ((overlay = null), updateLive()));
     overlay.once('ready-to-show', () => overlay?.showInactive());
     load(overlay, 'overlay.html');
   }
   buildTrayMenu();
+  updateLive();
 }
 
 // ------------------------------------------------------------------ Taskleisten-Symbol
@@ -689,6 +721,12 @@ handle('win:theme', (theme) => {
   }
 });
 handle('app:log', (...a) => log('renderer', ...a));
+handle('app:relaunch', () => {
+  quitting = true;
+  app.relaunch();
+  app.exit(0);
+});
+handle('app:gpu', () => app.getGPUFeatureStatus().gpu_compositing);
 
 // ------------------------------------------------------------------ Tastenkürzel (auch im Spiel)
 function registerHotkeys() {
@@ -722,7 +760,7 @@ app.whenReady().then(async () => {
   else Menu.setApplicationMenu(null);
   addresses = listAddresses();
   monitor.on('stats', (s) => {
-    send('stats', s);
+    if (winVisible()) send('stats', s);
     if (server && server.clients().length) server.broadcast({ t: 'stats', s });
     if (overlay && !overlay.isDestroyed()) overlay.webContents.send('stats', s);
     boost.record(s);
@@ -741,6 +779,8 @@ app.whenReady().then(async () => {
   registerHotkeys();
   if (settings.data.overlay.enabled) setOverlay(true);
   updateProcWanted();
+  updateLive();
+  setInterval(() => (updateLive(), updateProcWanted()), 3000); // z. B. Fenster von anderen Fenstern verdeckt/aufgedeckt
   setInterval(refreshAddresses, 4000); // WLAN gewechselt / Hotspot an → QR-Code passt sich an
   setInterval(() => {
     // PIN läuft ab → neue PIN anzeigen

@@ -9,7 +9,7 @@ const DEFAULTS = {
   onboarded: false,
   prefs: { lang: '', theme: 'system', mode: 'simple' },
   // Aussehen des Dashboards (Skin, Hintergrund, Farben …)
-  look: { skin: 'neon', accent: '', bg: 'aurora', bgImage: false, dim: 0.45, blur: 0, cardAlpha: 0.72, radius: 16, font: 'system', rgb: false, anim: true },
+  look: { skin: 'neon', accent: '', bg: 'aurora', bgImage: false, dim: 0.45, blur: 0, cardAlpha: 0.72, radius: 16, font: 'system', rgb: false, anim: false },
   // null = Standard-Layout des Skins
   layout: { pc: null, phone: null },
   remote: { allowControl: true, approveNew: true, phoneLook: 'same' },
@@ -17,7 +17,8 @@ const DEFAULTS = {
   boost: { auto: false, lowerOthers: true, raiseGame: true, closeList: [], games: [], hotkey: true },
   overlay: { enabled: false, corner: 'tr', metrics: ['cpu', 'gpu', 'ram', 'netDown'], opacity: 0.85, scale: 1, hotkey: true },
   alerts: { enabled: false, cpuTemp: 90, gpuTemp: 85, ram: 92 },
-  app: { closeToTray: false },
+  // gpu: false = SlimManager benutzt die Grafikkarte nicht (die gehört dem Spiel)
+  app: { closeToTray: false, gpu: false },
   devices: [],
   window: {},
 };

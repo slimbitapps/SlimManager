@@ -63,6 +63,20 @@ export function Dashboard({
   const [cols, setCols] = useState(4);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
+  // Animationen (falls eingeschaltet) anhalten, solange das Fenster nicht im Vordergrund ist
+  const [paused, setPaused] = useState(() => document.visibilityState === 'hidden' || !document.hasFocus());
+  useEffect(() => {
+    if (!look.anim && !look.rgb) return;
+    const upd = () => setPaused(document.visibilityState === 'hidden' || !document.hasFocus());
+    addEventListener('focus', upd);
+    addEventListener('blur', upd);
+    document.addEventListener('visibilitychange', upd);
+    return () => {
+      removeEventListener('focus', upd);
+      removeEventListener('blur', upd);
+      document.removeEventListener('visibilitychange', upd);
+    };
+  }, [look.anim, look.rgb]);
 
   // Spaltenzahl passt sich der Breite an (Handy 2, großes Fenster bis 6)
   useEffect(() => {
@@ -75,7 +89,7 @@ export function Dashboard({
 
   return (
     <div
-      className={`dash ${look.rgb ? 'rgb' : ''} ${look.anim ? 'anim' : ''} ${edit ? 'editing' : ''}`}
+      className={`dash ${look.rgb ? 'rgb' : ''} ${look.anim ? 'anim' : ''} ${paused ? 'paused' : ''} ${edit ? 'editing' : ''}`}
       data-skin={look.skin}
       data-font={look.font}
       style={lookVars(look)}

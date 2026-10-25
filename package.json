@@ -12,7 +12,8 @@
     "icons": "electron scripts/make-icons.cjs",
     "dist:win": "vite build && electron-builder --win",
     "dist:mac": "vite build && electron-builder --mac",
-    "dist:linux": "vite build && electron-builder --linux"
+    "dist:linux": "vite build && electron-builder --linux",
+    "test:perf": "vite build && node test/perf.cjs"
   },
   "author": "SlimBit Apps",
   "license": "UNLICENSED",

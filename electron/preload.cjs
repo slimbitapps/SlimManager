@@ -39,6 +39,8 @@ contextBridge.exposeInMainWorld('api', {
   copy: invoke('clipboard:write'),
   setTheme: invoke('win:theme'),
   log: invoke('app:log'),
+  relaunch: invoke('app:relaunch'),
+  gpuStatus: invoke('app:gpu'),
   platform: process.platform,
   on(channel, cb) {
     const fn = (_e, payload) => cb(payload);

@@ -88,6 +88,8 @@ function Head({ title, sub }: { title: TKey; sub: TKey }) {
 function GeneralTab() {
   const p = useStore((s) => s.settings.prefs);
   const tray = useStore((s) => s.settings.app.closeToTray);
+  const gpu = useStore((s) => s.settings.app.gpu);
+  const [restart, setRestart] = useState(false);
   return (
     <>
       <Head title="settings.general" sub="settings.general.sub" />
@@ -125,6 +127,25 @@ function GeneralTab() {
         <Row label={t('set.tray')} desc={t('set.tray.desc')}>
           <Switch on={tray} onChange={(closeToTray) => updateSettings({ app: { closeToTray } })} />
         </Row>
+      </Group>
+      <Group label={t('set.perf')}>
+        <Row label={t('set.gpu')} desc={t('set.gpu.desc')}>
+          <Switch
+            on={gpu}
+            onChange={async (v) => {
+              await updateSettings({ app: { gpu: v } });
+              setRestart(true);
+            }}
+            testId="gpu-switch"
+          />
+        </Row>
+        {restart && (
+          <Row label={t('set.restart')}>
+            <button className="btn primary sm" onClick={() => window.api.relaunch()}>
+              {t('set.restart.btn')}
+            </button>
+          </Row>
+        )}
       </Group>
       <button className="btn ghost sm" onClick={showIntroAgain}>
         {t('settings.intro')}

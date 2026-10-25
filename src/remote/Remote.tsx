@@ -11,7 +11,7 @@ import { t, setLang, getLocale, type TKey } from '../i18n';
 
 // ------------------------------------------------------------------ Zustand der Seite
 const HISTORY_KEYS = ['cpu', 'ram', 'gpu', 'gpuMem', 'cpuTemp', 'gpuTemp', 'netDown', 'netUp', 'diskRead', 'diskWrite', 'swap'] as const;
-const DEFAULT_LOOK: Look = { skin: 'neon', accent: '', bg: 'aurora', bgImage: false, dim: 0.45, blur: 0, cardAlpha: 0.72, radius: 16, font: 'system', rgb: false, anim: true };
+const DEFAULT_LOOK: Look = { skin: 'neon', accent: '', bg: 'aurora', bgImage: false, dim: 0.45, blur: 0, cardAlpha: 0.72, radius: 16, font: 'system', rgb: false, anim: false };
 
 interface S {
   status: Status;

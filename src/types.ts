@@ -36,7 +36,7 @@ export interface Settings {
   boost: { auto: boolean; lowerOthers: boolean; raiseGame: boolean; closeList: string[]; games: string[]; hotkey: boolean };
   overlay: OverlayCfg;
   alerts: { enabled: boolean; cpuTemp: number; gpuTemp: number; ram: number };
-  app: { closeToTray: boolean };
+  app: { closeToTray: boolean; gpu: boolean };
   devices: Device[];
 }
 
@@ -114,6 +114,8 @@ export interface Api {
   copy(text: string): Promise<void>;
   setTheme(theme: string): Promise<void>;
   log(...a: unknown[]): Promise<void>;
+  relaunch(): Promise<void>;
+  gpuStatus(): Promise<string>;
   platform: string;
   on(channel: string, cb: (payload: any) => void): () => void;
 }
