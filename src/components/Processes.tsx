@@ -7,8 +7,8 @@ import { Dialog, Seg } from './ui';
 import { IconSearch, IconStop, IconFolder, IconBroom, IconGamepad, IconBolt, IconUp, IconDown, IconShield } from '../icons';
 
 type Filter = 'all' | 'app' | 'game' | 'background' | 'system';
-type SortKey = 'name' | 'cpu' | 'mem' | 'kind';
-type Row = { id: string; name: string; cpu: number; mem: number; count: number; kind: Kind; prio: Level; path: string; pids: number[]; exe: string; pid?: number };
+type SortKey = 'name' | 'cpu' | 'mem' | 'gpu' | 'kind';
+type Row = { id: string; name: string; cpu: number; mem: number; gpu: number | null; count: number; kind: Kind; prio: Level; path: string; pids: number[]; exe: string; pid?: number };
 
 export const LEVELS: Level[] = ['low', 'below', 'normal', 'above', 'high'];
 const isLocked = (k: Kind) => k === 'system' || k === 'self';
@@ -26,7 +26,11 @@ function useProcs(): ProcData | null {
 export function Processes() {
   const procs = useProcs();
   const expert = useStore((s) => s.settings.prefs.mode === 'expert');
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(() => {
+    const pre = useStore.getState().procQuery;
+    if (pre) useStore.setState({ procQuery: '' });
+    return pre;
+  });
   const [filter, setFilter] = useState<Filter>('all');
   const [grouped, setGrouped] = useState(true);
   const [sort, setSort] = useState<[SortKey, 1 | -1]>(['cpu', -1]);
@@ -39,16 +43,16 @@ export function Processes() {
     if (!procs) return [];
     const base: Row[] =
       grouped || !expert
-        ? procs.groups.map((g) => ({ ...g }))
-        : procs.flat.map((p) => ({ id: 'pid:' + p.pid, name: p.name, cpu: p.cpu, mem: p.mem, count: 1, kind: p.kind, prio: p.prio, path: p.path, pids: [p.pid], exe: p.name, pid: p.pid }));
+        ? procs.groups.map((g) => ({ ...g, gpu: g.gpu ?? null }))
+        : procs.flat.map((p) => ({ id: 'pid:' + p.pid, name: p.name, cpu: p.cpu, mem: p.mem, gpu: p.gpu, count: 1, kind: p.kind, prio: p.prio, path: p.path, pids: [p.pid], exe: p.name, pid: p.pid }));
     const needle = q.trim().toLowerCase();
     return base
       .filter((r) => (filter === 'all' ? true : filter === 'system' ? isLocked(r.kind) : r.kind === filter))
       .filter((r) => !needle || r.name.toLowerCase().includes(needle) || r.exe.toLowerCase().includes(needle) || String(r.pid || '').includes(needle))
       .sort((a, b) => {
         const [k, dir] = sort;
-        const va = a[k];
-        const vb = b[k];
+        const va = a[k] ?? -1;
+        const vb = b[k] ?? -1;
         return (typeof va === 'string' ? va.localeCompare(vb as string) : (va as number) - (vb as number)) * dir || b.cpu - a.cpu;
       });
   }, [procs, grouped, expert, q, filter, sort]);
@@ -64,6 +68,9 @@ export function Processes() {
   }, [procs]);
 
   const selected = rows.find((r) => r.id === sel) || null;
+  // GPU pro App gibt es nur unter Windows – dann eigene Spalte
+  const hasGpu = !!procs?.groups.some((g) => g.gpu !== null && g.gpu !== undefined);
+  const cols = ['minmax(200px, 1fr)', '110px', '110px', hasGpu ? '80px' : '', '100px', expert ? '150px' : '', '52px'].filter(Boolean).join(' ');
   const sortBy = (k: SortKey) => setSort(([sk, dir]) => [k, sk === k ? ((-dir) as 1 | -1) : k === 'name' || k === 'kind' ? 1 : -1]);
   const head = (k: SortKey, label: string, cls = '') => (
     <button className={`th ${cls} ${sort[0] === k ? 'on' : ''}`} onClick={() => sortBy(k)}>
@@ -117,11 +124,12 @@ export function Processes() {
           </button>
         ))}
       </div>
-      <div className="table" role="table">
+      <div className="table" role="table" style={{ '--cols': cols } as React.CSSProperties}>
         <div className={`tr thead ${expert ? 'expert' : ''}`}>
           {head('name', t('procs.col.name'), 'name')}
           {head('kind', t('procs.col.kind'))}
           {head('cpu', 'CPU', 'num')}
+          {hasGpu && head('gpu', 'GPU', 'num')}
           {head('mem', t('procs.col.mem'), 'num')}
           {expert && <span className="th">{t('procs.col.prio')}</span>}
           <span className="th" />
@@ -130,7 +138,7 @@ export function Processes() {
           {!procs && <div className="empty">{t('common.loading')}</div>}
           {procs && rows.length === 0 && <div className="empty">{t('procs.none')}</div>}
           {rows.slice(0, 400).map((r) => (
-            <ProcRow key={r.id} r={r} expert={expert} on={sel === r.id} locale={locale} onSelect={() => setSel(r.id === sel ? null : r.id)} onKill={() => setConfirm(r)} />
+            <ProcRow key={r.id} r={r} expert={expert} gpu={hasGpu} on={sel === r.id} locale={locale} onSelect={() => setSel(r.id === sel ? null : r.id)} onKill={() => setConfirm(r)} />
           ))}
         </div>
       </div>
@@ -160,7 +168,7 @@ export function Processes() {
   );
 }
 
-const ProcRow = memo(function ProcRow({ r, expert, on, locale, onSelect, onKill }: { r: Row; expert: boolean; on: boolean; locale: string; onSelect: () => void; onKill: () => void }) {
+const ProcRow = memo(function ProcRow({ r, expert, gpu, on, locale, onSelect, onKill }: { r: Row; expert: boolean; gpu: boolean; on: boolean; locale: string; onSelect: () => void; onKill: () => void }) {
   const heavy = r.cpu >= 25 ? 'hot' : r.cpu >= 8 ? 'warm' : '';
   return (
     <div className={`tr ${expert ? 'expert' : ''} ${on ? 'on' : ''}`} onClick={onSelect} data-testid="proc-row" data-name={r.name}>
@@ -177,6 +185,7 @@ const ProcRow = memo(function ProcRow({ r, expert, on, locale, onSelect, onKill 
         <i style={{ width: `${Math.min(100, r.cpu)}%` }} />
         <b>{r.cpu.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %</b>
       </span>
+      {gpu && <span className={`td num ${(r.gpu ?? 0) >= 20 ? 'gpu-hot' : ''}`}>{r.gpu === null ? '–' : `${Math.round(r.gpu)} %`}</span>}
       <span className="td num">{bytes(r.mem, locale)}</span>
       {expert && <span className="td small muted">{t(`prio.${r.prio}` as TKey)}</span>}
       <span className="td act">

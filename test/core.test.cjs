@@ -483,3 +483,88 @@ test('Monitor mit Attrappe: Werte, Verlauf, fehlende Sensoren = null', async () 
   assert.ok(m.snap.netDown > 0);
   assert.equal(m.historyOf(10).cpu.length, 1, 'Verlauf nur im Sekundentakt');
 });
+
+// ------------------------------------------------------------------ Windows-Messung (ohne echtes Windows: Ausgaben simuliert)
+test('Windows-Prozessliste: CPU aus Rechenzeit-Differenz, Pfade, System ohne Pfad', () => {
+  const { parseWinProcs } = require('../electron/core/winsampler.cjs');
+  const prev = new Map();
+  const a = '4\tSystem\t1000\t1000\t8\t\n1200\tchrome\t5000\t104857600\t8\tC:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\n';
+  const first = parseWinProcs(a, prev, 0, 8);
+  assert.equal(first.length, 2);
+  assert.equal(first[1].cpu, 0, 'erste Messung: noch keine Differenz');
+  // 1 s später: chrome hat 2000 ms Rechenzeit verbraucht → 2 von 8 Kernen = 25 %
+  const b = '4\tSystem\t1000\t1000\t8\t\n1200\tchrome\t7000\t104857600\t13\tC:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\n';
+  const [sys, chrome] = parseWinProcs(b, prev, 1000, 8);
+  assert.equal(chrome.cpu, 25);
+  assert.equal(chrome.name, 'chrome.exe');
+  assert.equal(chrome.path, 'C:\\Program Files\\Google\\Chrome\\Application');
+  assert.equal(chrome.memRss, 102400);
+  assert.equal(chrome.priority, 13);
+  assert.equal(sys.name, 'System');
+  assert.equal(procs.classify(sys, { platform: 'win32' }), 'system');
+  assert.equal(procs.normalize([chrome], { platform: 'win32', cores: 8 })[0].prio, 'high');
+});
+
+test('Windows-GPU pro Prozess, netstat und nvidia-smi pmon lesen', () => {
+  const { parseWinGpu, parseNetstat, parsePmon } = require('../electron/core/winsampler.cjs');
+  const g = parseWinGpu('GPU 57 2147483648 1200=40,999=17');
+  assert.equal(g.util, 57);
+  assert.equal(g.memUsed, 2147483648);
+  assert.deepEqual([...g.perPid], [[1200, 40], [999, 17]]);
+  assert.deepEqual([...parseWinGpu('GPU 0 0 ').perPid], []);
+  assert.equal(parseWinGpu('Hallo'), null);
+  const ns = 'Schnittstellenstatistik\n\n                           Empfangen            Gesendet\n\nBytes                     123456789           9876543\nUnicastpakete               1000               900\n';
+  assert.deepEqual(parseNetstat(ns), { rx: 123456789, tx: 9876543 });
+  assert.equal(parseNetstat('nichts'), null);
+  const pm = '# gpu        pid  type    sm   mem   enc   dec   command\n# Idx          #   C/G     %     %     %     %   name\n    0       4321     G    63    20     -     -   game.exe\n    0       1200     G     5     2     -     -   chrome.exe\n    0          -     -     -     -     -     -   -\n';
+  assert.deepEqual([...parsePmon(pm)], [[4321, 63], [1200, 5]]);
+});
+
+test('Windows-Helfer: Anfragen und Antworten passen zusammen (simulierte PowerShell)', async () => {
+  const { WinSampler } = require('../electron/core/winsampler.cjs');
+  const { EventEmitter } = require('node:events');
+  const out = new EventEmitter();
+  const fake = { exitCode: null, pid: 4242, stdout: out, on() {}, stdin: { write(line) {
+    // Antworten in Stücken liefern, wie es eine echte Pipe tut
+    if (line.startsWith('P')) setTimeout(() => (out.emit('data', '1200\tchrome\t500\t1024\t8\tC:\\a\\chrome.exe\n12'), out.emit('data', '\tx\t1\t1\t8\t\nEND\r\n')), 5);
+    if (line.startsWith('G')) setTimeout(() => out.emit('data', 'GPU 12 0 1200=12\r\n'), 5);
+  }, end() {} } };
+  const ws = new WinSampler({ spawner: () => fake });
+  const [list, gpu] = await Promise.all([ws.processes(4), ws.gpu()]);
+  assert.deepEqual(list.map((p) => p.name), ['chrome.exe', 'x.exe']);
+  assert.equal(gpu.perPid.get(1200), 12);
+  assert.deepEqual(ws.pids(), [4242]);
+});
+
+test('Monitor unter Windows: Prozesse über den Helfer, GPU pro Prozess wird angehängt', async () => {
+  const ws = {
+    processes: async () => [{ pid: 50, parentPid: 0, name: 'game.exe', cpu: 30, memRss: 1, priority: 8, path: 'D:\\Games', command: 'D:\\Games\\game.exe' }],
+    gpu: async () => null,
+    net: async () => ({ rx: 1000, tx: 10 }),
+    pids: () => [99],
+    stop() {},
+  };
+  const si = { processes: async () => assert.fail('systeminformation soll unter Windows nicht benutzt werden') };
+  const m = new Monitor({ si, platform: 'win32', winSampler: ws });
+  m.gpuPerPid = new Map([[50, 77]]);
+  m.gpuPerPidAt = Date.now();
+  let got = null;
+  m.on('procs', (l) => (got = l));
+  await m.procTick(true);
+  assert.equal(got[0].gpu, 77);
+  assert.equal(procs.group(procs.normalize(got, { platform: 'win32', cores: 4 }))[0].gpu, 77);
+  assert.deepEqual(m.childPids(), [99]);
+});
+
+test('Prozessliste-Stufen: "medium" misst höchstens alle 5 s', async () => {
+  let n = 0;
+  const m = new Monitor({ si: { processes: async () => (n++, { list: [] }) }, platform: 'linux' });
+  m.setWanted('medium');
+  await m.procTick();
+  await m.procTick();
+  assert.equal(n, 1);
+  m.setWanted('off');
+  m.procsAt = 0;
+  await m.procTick();
+  assert.equal(n, 1, 'aus = gar nicht');
+});

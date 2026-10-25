@@ -4,7 +4,7 @@ import { create } from 'zustand';
 import { Conn, store, type Status } from './conn';
 import { Dashboard } from '../shared/Dashboard';
 import type { WidgetData } from '../shared/WidgetView';
-import { defaultLayout } from '../shared/widgets';
+import { defaultLayout, makeWidget, METRICS, METRIC, stylesFor, WIDGET_TYPES } from '../shared/widgets';
 import { bytes } from '../shared/format';
 import type { BoostState, History, Look, ProcGroup, Stats, SysInfo, Widget, Level } from '../shared/types';
 import { t, setLang, getLocale, type TKey } from '../i18n';
@@ -22,6 +22,8 @@ interface S {
   control: boolean;
   overlay: boolean;
   lively: boolean;
+  /** Dashboard wird gerade am Handy bearbeitet */
+  editing: boolean;
   sys: SysInfo | null;
   stats: Stats | null;
   history: History;
@@ -38,6 +40,7 @@ const useR = create<S>(() => ({
   control: false,
   overlay: false,
   lively: true,
+  editing: false,
   sys: null,
   stats: null,
   history: {},
@@ -95,6 +98,7 @@ const conn = new Conn({
         set({ bg: typeof m.img === 'string' && m.img.startsWith('data:image/') ? m.img : null });
         break;
       case 'result':
+        if (m.quiet) break;
         toast(m.ok ? t('r.done') : t(`err.${['admin', 'protected', 'gone', 'no-game', 'no-control'].includes(m.error) ? m.error : 'failed'}` as TKey));
         break;
     }
@@ -114,7 +118,8 @@ export function Remote() {
 
   // Prozessliste nur abonnieren, wenn sie gebraucht wird
   const layout = useR((s) => s.layout);
-  const wantProcs = online && (tab !== 'dash' || (layout || []).some((w) => w.type === 'procs'));
+  const [detailOpen, setDetailOpen] = useState(false);
+  const wantProcs = online && (tab !== 'dash' || detailOpen || (layout || []).some((w) => w.type === 'procs'));
   useEffect(() => {
     if (!wantProcs) return;
     conn.send('sub', 'procs');
@@ -138,7 +143,7 @@ export function Remote() {
       </header>
       {!online && <div className="r-banner">{t('r.reconnecting')}</div>}
       <main className="r-main">
-        {tab === 'dash' && <DashTab />}
+        {tab === 'dash' && <DashTab onDetail={setDetailOpen} onTab={setTab} />}
         {tab === 'procs' && <ProcsTab />}
         {tab === 'boost' && <BoostTab />}
       </main>
@@ -150,7 +155,7 @@ export function Remote() {
           </button>
         ))}
       </nav>
-      {menu && <Menu onClose={() => setMenu(false)} />}
+      {menu && <Menu onClose={() => setMenu(false)} onEdit={() => (setTab('dash'), set({ editing: true }))} />}
       {toastText && <div className="r-toast">{toastText}</div>}
     </div>
   );
@@ -199,14 +204,97 @@ function useData(): WidgetData {
   );
 }
 
-function DashTab() {
+function DashTab({ onDetail, onTab }: { onDetail: (open: boolean) => void; onTab: (t: Tab) => void }) {
+  const [sheet, setSheet] = useState<ProcGroup | null>(null);
+  const procs = useR((s) => s.procs);
   const look = useR((s) => s.look);
   const layout = useR((s) => s.layout);
   const bg = useR((s) => s.bg);
   const data = useData();
   const missing = useR((s) => (s.stats ? [s.stats.cpuTemp === null, s.stats.gpuTemp === null, s.stats.gpuMem === null].join() : ''));
   const list = useMemo(() => layout || defaultLayout(look.skin, 'phone', useR.getState().stats), [layout, look.skin, missing]);
-  return <Dashboard look={look} image={bg} layout={list} data={data} maxCols={6} minCol={165} testId="r-dashboard" />;
+  const editing = useR((s) => s.editing);
+  const [sel, setSel] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  // Änderung sofort am PC speichern (gilt für alle Handys/Tablets)
+  const save = (next: Widget[] | null) => {
+    set({ layout: next });
+    conn.send('layout', { list: next });
+  };
+  const idx = list.findIndex((w) => w.id === sel);
+  const cur = idx >= 0 ? list[idx] : null;
+  const patch = (p: Partial<Widget>) => cur && save(list.map((w) => (w.id === cur.id ? { ...w, ...p } : w)));
+  const move = (dir: -1 | 1) => {
+    const j = idx + dir;
+    if (idx < 0 || j < 0 || j >= list.length) return;
+    const next = list.slice();
+    [next[idx], next[j]] = [next[j], next[idx]];
+    save(next);
+  };
+  const SIZES: Widget['size'][] = ['s', 'w', 'm', 't', 'l'];
+  const edit = editing ? { selected: sel, onSelect: setSel, onMove: () => {}, onRemove: (id: string) => save(list.filter((w) => w.id !== id)) } : undefined;
+  return (
+    <>
+      {editing && (
+        <div className="r-editbar" data-testid="r-editbar">
+          <button onClick={() => setAdding(true)} data-testid="r-add">
+            ＋ {t('r.addTile')}
+          </button>
+          <button onClick={() => (save(null), setSel(null))}>{t('r.reset')}</button>
+          <button className="primary" onClick={() => (set({ editing: false }), setSel(null))} data-testid="r-edit-done">
+            {t('common.done')}
+          </button>
+        </div>
+      )}
+      <Dashboard look={look} image={bg} layout={list} data={data} edit={edit} maxCols={6} minCol={165} testId="r-dashboard" onDetail={(k) => onDetail(!!k)} onApp={setSheet} onAll={() => onTab('procs')} onBoostTile={() => onTab('boost')} />
+      {editing && cur && (
+        <div className="r-tilebar" data-testid="r-tilebar">
+          <button onClick={() => move(-1)} aria-label="←" disabled={idx === 0}>
+            ◀
+          </button>
+          <button onClick={() => move(1)} aria-label="→" disabled={idx === list.length - 1}>
+            ▶
+          </button>
+          <button onClick={() => patch({ size: SIZES[(SIZES.indexOf(cur.size) + 1) % SIZES.length] })} data-testid="r-size">
+            ⤢ {t(`size.${cur.size}` as TKey)}
+          </button>
+          {cur.type === 'metric' && (
+            <button
+              onClick={() => {
+                const st = stylesFor(cur.metric || 'cpu');
+                patch({ style: st[(st.indexOf(cur.style || st[0]) + 1) % st.length] });
+              }}
+              data-testid="r-style"
+            >
+              ◐ {t(`style.${cur.style}` as TKey)}
+            </button>
+          )}
+          <button className="danger" onClick={() => (save(list.filter((w) => w.id !== cur.id)), setSel(null))}>
+            ✕
+          </button>
+        </div>
+      )}
+      {adding && (
+        <Sheet title={t('r.addTile')} onClose={() => setAdding(false)}>
+          <div className="r-addgrid">
+            {METRICS.map((m) => (
+              <button key={m} onClick={() => (save([...list, makeWidget('metric', m)]), setAdding(false))} data-testid={`r-add-${m}`}>
+                <i style={{ background: METRIC[m].color }} />
+                {t(`metric.${m}` as TKey)}
+              </button>
+            ))}
+            {WIDGET_TYPES.filter((x) => x !== 'metric').map((x) => (
+              <button key={x} onClick={() => (save([...list, makeWidget(x)]), setAdding(false))}>
+                <i />
+                {t(`wtype.${x}` as TKey)}
+              </button>
+            ))}
+          </div>
+        </Sheet>
+      )}
+      {sheet && <ProcSheet p={(procs || []).find((x) => x.id === sheet.id) || sheet} onClose={() => setSheet(null)} />}
+    </>
+  );
 }
 
 // ------------------------------------------------------------------ Prozesse
@@ -215,13 +303,15 @@ const LEVELS: Level[] = ['low', 'below', 'normal', 'above', 'high'];
 function ProcsTab() {
   const procs = useR((s) => s.procs);
   const control = useR((s) => s.control);
-  const [sort, setSort] = useState<'cpu' | 'mem'>('cpu');
+  const [sort, setSort] = useState<'cpu' | 'mem' | 'gpu'>('cpu');
+  // GPU pro App liefert nur Windows
+  const hasGpu = (procs || []).some((p) => p.gpu !== null && p.gpu !== undefined);
   const [q, setQ] = useState('');
   const [sel, setSel] = useState<ProcGroup | null>(null);
   const locale = getLocale();
   const list = (procs || [])
     .filter((p) => p.kind !== 'self' && (!q || p.name.toLowerCase().includes(q.toLowerCase())))
-    .sort((a, b) => b[sort] - a[sort]);
+    .sort((a, b) => (b[sort] ?? -1) - (a[sort] ?? -1) || b.cpu - a.cpu);
   return (
     <div className="r-procs" data-testid="r-procs">
       <div className="r-procs-head">
@@ -230,6 +320,11 @@ function ProcsTab() {
           <button className={sort === 'cpu' ? 'on' : ''} onClick={() => setSort('cpu')}>
             {t('r.sortCpu')}
           </button>
+          {hasGpu && (
+            <button className={sort === 'gpu' ? 'on' : ''} onClick={() => setSort('gpu')} data-testid="r-sort-gpu">
+              GPU
+            </button>
+          )}
           <button className={sort === 'mem' ? 'on' : ''} onClick={() => setSort('mem')}>
             {t('r.sortMem')}
           </button>
@@ -245,7 +340,11 @@ function ProcsTab() {
               {p.name}
               {p.count > 1 && <small> · {p.count}</small>}
             </span>
-            <span className="r-num">{p.cpu.toLocaleString(locale, { maximumFractionDigits: 1 })} %</span>
+            {sort === 'gpu' ? (
+              <span className="r-num gpu">{p.gpu === null || p.gpu === undefined ? '–' : `${Math.round(p.gpu)} %`}</span>
+            ) : (
+              <span className="r-num">{p.cpu.toLocaleString(locale, { maximumFractionDigits: 1 })} %</span>
+            )}
             <span className="r-num mem">{bytes(p.mem, locale, 0)}</span>
           </button>
         ))}
@@ -377,12 +476,17 @@ function BoostTab() {
 // ------------------------------------------------------------------ Menü
 const noSleep = new NoSleep();
 
-function Menu({ onClose }: { onClose: () => void }) {
+function Menu({ onClose, onEdit }: { onClose: () => void; onEdit: () => void }) {
   const control = useR((s) => s.control);
   const overlay = useR((s) => s.overlay);
   const [awake, setAwake] = useState(store.get('awake') === '1');
   return (
     <Sheet title="SlimManager" onClose={onClose}>
+      {control && (
+        <button className="r-btn" onClick={() => (onEdit(), onClose())} data-testid="r-edit">
+          ✏️ {t('r.edit')}
+        </button>
+      )}
       <button
         className="r-btn"
         onClick={() => {

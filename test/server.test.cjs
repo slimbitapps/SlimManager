@@ -305,3 +305,17 @@ test('Fremde IP-Adressen (Internet) werden abgewiesen', () => {
   for (const ip of ['192.168.1.20', '10.0.0.5', '172.20.10.3', '172.31.255.1', '::ffff:192.168.0.2', '127.0.0.1', 'fe80::1']) assert.ok(isPrivateIp(ip), ip);
   for (const ip of ['8.8.8.8', '172.32.0.1', '193.99.144.80', '2a00:1450::1', '']) assert.ok(!isPrivateIp(ip), ip);
 });
+
+test('Handy darf das Handy-Layout schicken (signiert, Größe begrenzt)', async () => {
+  const { srv, pairing, port } = await setup();
+  const got = [];
+  srv.on('command', (x) => got.push(x));
+  const { c, hello, key } = await pair(port, pairing.code);
+  await c.next('ok');
+  cmd(c, key, hello.nonce, 1, 'layout', { list: [{ id: 'a', type: 'clock', size: 's' }] });
+  await new Promise((r) => setTimeout(r, 100));
+  assert.equal(got[0].c, 'layout');
+  assert.equal(got[0].a.list[0].type, 'clock');
+  c.ws.close();
+  await srv.stop();
+});

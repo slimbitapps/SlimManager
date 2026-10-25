@@ -78,6 +78,7 @@ export const de = {
   'size.xl': 'Ganze Breite',
 
   // Dashboard & Editor
+  'dash.tip': 'Tipp: Klicke auf eine Kachel für Details und wer wie viel Leistung zieht. Mit „Anpassen“ oben rechts änderst du das Dashboard.',
   'dash.edit': 'Anpassen',
   'dash.editTitle': 'Dashboard anpassen',
   'dash.look': 'Aussehen',
@@ -114,6 +115,19 @@ export const de = {
   'preset.minimal': 'Minimal',
   'preset.streamer': 'Streamer',
   'preset.phone': 'Handy',
+
+  // Detail-Ansicht
+  'detail.min': 'Minimum',
+  'detail.avg': 'Durchschnitt',
+  'detail.max': 'Spitze',
+  'detail.ago': 'letzte {m} Min',
+  'detail.who': 'Wer verbraucht am meisten',
+  'detail.all': 'Alle Prozesse',
+  'detail.free': '{v} frei',
+  'detail.noGpu': 'GPU pro App gibt es nur unter Windows. Hier siehst du die Gesamt-Auslastung.',
+  'detail.noApps': 'Für diesen Wert gibt es keine Aufteilung nach Apps.',
+  'detail.netHint': 'Netzwerk pro App kann Windows/macOS nicht ohne Admin-Rechte verraten – hier siehst du den Gesamt-Verkehr.',
+  'detail.tempHint': 'Die Temperatur steigt mit der CPU-Last – diese Apps heizen gerade am meisten.',
 
   // Vollbild
   'fs.btn': 'Vollbild',
@@ -467,6 +481,14 @@ export const de = {
   'set.restart': 'Wird nach einem Neustart von SlimManager wirksam.',
   'set.restart.btn': 'Jetzt neu starten',
   'look.animNote': 'Spar-Automatik: Sobald ein Spiel läuft und SlimManager nicht im Vordergrund ist, schaltet die Anzeige auf 1× pro Sekunde ohne Animation – dein Spiel bekommt die volle Leistung.',
+  'set.autostart': 'Mit dem Computer starten',
+  'set.autostart.desc': 'Startet unsichtbar in der Taskleiste – für automatischen Boost, Handy-Anzeige und Warnungen.',
+  'set.self': 'SlimManager selbst',
+  'set.self.desc': 'So viel braucht SlimManager gerade (CPU: Anteil am ganzen Prozessor, wie im Task-Manager).',
+  'set.self.gpuOn': 'an',
+  'set.self.gpuOff': 'aus',
+  'alerts.hogs': 'Warnung bei Leistungsfressern',
+  'alerts.hogs.desc': 'Wenn eine App länger als 1,5 Minuten mehr als ein Viertel der CPU braucht (z. B. ein hängender Browser-Tab).',
   'set.address': 'Netzwerk-Adresse',
   'set.address.desc': 'Welche Adresse im QR-Code steht.',
   'set.address.auto': 'Automatisch (empfohlen)',
@@ -537,5 +559,8 @@ export const de = {
   'r.sortMem': 'Speicher',
   'r.overlay': 'Mini-Anzeige am PC',
   'r.disconnect': 'Gerät trennen',
+  'r.edit': 'Dashboard bearbeiten',
+  'r.addTile': 'Kachel',
+  'r.reset': 'Standard',
   'r.layoutPc': 'Layout vom PC',
 } as const;

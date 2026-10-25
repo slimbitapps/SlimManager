@@ -6,6 +6,8 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import type { Look, Widget } from './types';
 import { SPAN } from './widgets';
 import { WidgetView, type WidgetData } from './WidgetView';
+import { Detail, detailFor, type DetailKind } from './Detail';
+import type { ProcGroup } from './types';
 import { t } from '../i18n';
 
 export interface EditProps {
@@ -47,8 +49,13 @@ export function Backdrop({ look, image }: { look: Look; image: string | null }) 
 }
 
 export function Dashboard({
-  look, image, layout, data, edit, maxCols = 6, minCol = 200, children, testId,
+  look, image, layout, data, edit, maxCols = 6, minCol = 200, children, testId, onDetail, onApp, onAll, onBoostTile,
 }: {
+  /** Detail-Ansicht geöffnet/geschlossen (damit die Prozessliste nur dann gemessen wird) */
+  onDetail?: (kind: DetailKind | null) => void;
+  onApp?: (g: ProcGroup) => void;
+  onAll?: () => void;
+  onBoostTile?: () => void;
   look: Look;
   image: string | null;
   layout: Widget[];
@@ -63,6 +70,15 @@ export function Dashboard({
   const [cols, setCols] = useState(4);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
+  const [detail, setDetail] = useState<DetailKind | null>(null);
+  const openDetail = (k: DetailKind | null) => {
+    setDetail(k);
+    onDetail?.(k);
+  };
+  // Detail-Ansicht schließen, wenn der Bearbeiten-Modus startet
+  useEffect(() => {
+    if (edit && detail) openDetail(null);
+  }, [edit]); // eslint-disable-line react-hooks/exhaustive-deps
   // Animationen (falls eingeschaltet) anhalten, solange das Fenster nicht im Vordergrund ist
   const [paused, setPaused] = useState(() => document.visibilityState === 'hidden' || !document.hasFocus());
   useEffect(() => {
@@ -102,7 +118,8 @@ export function Dashboard({
           {layout.map((w, i) => {
             const [cw, ch] = SPAN[w.size];
             const style = { gridColumn: `span ${Math.min(cw, cols)}`, gridRow: `span ${ch}` };
-            const cls = `card-w ${edit?.selected === w.id ? 'selected' : ''} ${dragOver === i && dragFrom !== i ? 'drop' : ''}`;
+            const target = edit ? null : detailFor(w);
+            const cls = `card-w ${edit?.selected === w.id ? 'selected' : ''} ${dragOver === i && dragFrom !== i ? 'drop' : ''} ${target ? 'tappable' : ''}`;
             return (
               <div
                 key={w.id}
@@ -111,7 +128,12 @@ export function Dashboard({
                 data-testid={`widget-${w.id}`}
                 data-type={w.type}
                 draggable={!!edit}
-                onClick={edit ? () => edit.onSelect(w.id) : undefined}
+                onClick={edit ? () => edit.onSelect(w.id) : target ? (e) => {
+                  // Knöpfe in der Kachel (z. B. "Boost starten") nicht abfangen
+                  if ((e.target as HTMLElement).closest('button')) return;
+                  if (target === 'boost') onBoostTile?.();
+                  else openDetail(target);
+                } : undefined}
                 onDragStart={edit ? (e) => (setDragFrom(i), e.dataTransfer.setData('text/plain', String(i)), (e.dataTransfer.effectAllowed = 'move')) : undefined}
                 onDragOver={edit ? (e) => (e.preventDefault(), setDragOver(i)) : undefined}
                 onDragLeave={edit ? () => setDragOver((x) => (x === i ? null : x)) : undefined}
@@ -148,6 +170,7 @@ export function Dashboard({
           {layout.length === 0 && <div className="dash-empty">{t('dash.empty')}</div>}
         </div>
       </div>
+      {detail && <Detail kind={detail} d={data} onClose={() => openDetail(null)} onApp={onApp} onAll={onAll} />}
     </div>
   );
 }

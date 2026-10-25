@@ -114,6 +114,22 @@ setTimeout(() => {
     assert.ok(JSON.parse(fs.readFileSync(path.join(userData, 'settings.json'), 'utf8')).onboarded, 'Einführung gespeichert');
     await shot(win, '10-dashboard-neon');
 
+    // ---------------------------------------------------------------- Kachel anklicken → Detail-Ansicht
+    await win.click('[data-testid="widget-cpu"]');
+    await win.waitForSelector('[data-testid="detail"]');
+    await win.waitForSelector('[data-testid="detail-row"]', { timeout: 10000 });
+    await shot(win, '27-detail-cpu', 800);
+    await win.click('[data-testid="detail-close"]');
+    await win.click('[data-testid="widget-ram"]');
+    await win.waitForSelector('[data-testid="detail-row"]', { timeout: 10000 });
+    await shot(win, '28-detail-ram', 600);
+    // App in der Liste anklicken → Prozess-Ansicht, gleich gefiltert
+    const appName = await win.locator('[data-testid="detail-row"] .ellipsis').first().evaluate((el) => el.firstChild.textContent.trim());
+    await win.locator('[data-testid="detail-row"]').first().click();
+    await win.waitForSelector('[data-testid="processes"]');
+    assert.equal(await win.inputValue('[data-testid="procs-search"]'), appName, 'Prozess-Ansicht nach App gefiltert');
+    await win.click('[data-testid="nav-dashboard"]');
+
     // ---------------------------------------------------------------- Editor: Widget hinzufügen und einstellen
     await win.click('[data-testid="edit-layout"]');
     await win.waitForSelector('[data-testid="edit-panel"]');
@@ -276,7 +292,9 @@ setTimeout(() => {
     // ---------------------------------------------------------------- Vollbild
     await win.click('[data-testid="nav-dashboard"]');
     await win.click('[data-testid="fs-btn"]');
-    await win.waitForSelector('.shell.fs', { timeout: 6000 });
+    // Mehrere Bildschirme → Auswahl erscheint: den aktuellen nehmen
+    if (await win.locator('.pop-menu').count()) await win.locator('.pop-menu button').filter({ hasText: /\(hier\)|\(here\)/ }).first().click();
+    await win.waitForSelector('.shell.fs', { timeout: 8000 });
     assert.equal(await win.locator('.sidebar').count(), 0, 'im Vollbild keine Seitenleiste');
     await sleep(1500);
     await shot(win, '26-fullscreen', 600);
@@ -313,6 +331,29 @@ setTimeout(() => {
     await sleep(1500);
     await shot(phone, '50-phone-dashboard');
     await shot(win, '41-phone-connected');
+
+    // Handy: Kachel antippen → Details
+    await phone.click('[data-testid="widget-cpu"]');
+    await phone.waitForSelector('[data-testid="detail-row"]', { timeout: 10000 });
+    await shot(phone, '56-phone-detail', 600);
+    await phone.click('[data-testid="detail-close"]');
+
+    // Handy: Dashboard bearbeiten (Größe ändern, Kachel hinzufügen) – wird am PC gespeichert
+    const phoneLayout = () => JSON.parse(fs.readFileSync(path.join(userData, 'settings.json'), 'utf8')).layout.phone;
+    await phone.click('[data-testid="r-menu"]');
+    await phone.click('[data-testid="r-edit"]');
+    await phone.waitForSelector('[data-testid="r-editbar"]');
+    await phone.click('[data-testid="widget-cpu"]');
+    await phone.waitForSelector('[data-testid="r-tilebar"]');
+    await phone.click('[data-testid="r-size"]');
+    await waitFor(() => phoneLayout()?.find((w) => w.id === 'cpu')?.size === 'w', 4000, 'Größe am PC gespeichert');
+    await phone.click('[data-testid="r-add"]');
+    await phone.click('[data-testid="r-add-gpuTemp"]');
+    await waitFor(() => phoneLayout()?.some((w) => w.metric === 'gpuTemp' && w.id !== 'gt'), 4000, 'Kachel hinzugefügt');
+    await phone.click('[data-testid="widget-cpu"]');
+    await shot(phone, '57-phone-edit', 500);
+    await phone.click('[data-testid="r-edit-done"]');
+    await phone.waitForSelector('[data-testid="r-editbar"]', { state: 'detached' });
 
     // Handy: Prozesse + Steuern
     await phone.click('[data-testid="r-tab-procs"]');

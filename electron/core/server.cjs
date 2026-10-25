@@ -30,7 +30,7 @@ const BLOCK_MS = 60_000;
 const APPROVAL_MS = 60_000;
 
 /** Befehle, die das Handy schicken darf. */
-const COMMANDS = new Set(['ping', 'sub', 'unsub', 'kill', 'prio', 'boost', 'unboost', 'overlay', 'history']);
+const COMMANDS = new Set(['ping', 'sub', 'unsub', 'kill', 'prio', 'boost', 'unboost', 'overlay', 'history', 'layout']);
 /** Themen, die ein Handy abonnieren kann (z. B. Prozessliste nur, wenn sie offen ist). */
 const TOPICS = new Set(['procs']);
 

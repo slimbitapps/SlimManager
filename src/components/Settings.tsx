@@ -89,6 +89,7 @@ function GeneralTab() {
   const p = useStore((s) => s.settings.prefs);
   const tray = useStore((s) => s.settings.app.closeToTray);
   const gpu = useStore((s) => s.settings.app.gpu);
+  const autostart = useStore((s) => s.settings.app.autostart);
   const [restart, setRestart] = useState(false);
   return (
     <>
@@ -124,11 +125,15 @@ function GeneralTab() {
             ]}
           />
         </Row>
+        <Row label={t('set.autostart')} desc={t('set.autostart.desc')}>
+          <Switch on={autostart} onChange={(v) => updateSettings({ app: { autostart: v, ...(v ? { closeToTray: true } : {}) } })} testId="autostart" />
+        </Row>
         <Row label={t('set.tray')} desc={t('set.tray.desc')}>
           <Switch on={tray} onChange={(closeToTray) => updateSettings({ app: { closeToTray } })} />
         </Row>
       </Group>
       <Group label={t('set.perf')}>
+        <SelfUsage />
         <Row label={t('set.gpu')} desc={t('set.gpu.desc')}>
           <Switch
             on={gpu}
@@ -151,6 +156,26 @@ function GeneralTab() {
         {t('settings.intro')}
       </button>
     </>
+  );
+}
+
+/** "SlimManager braucht selbst …" – live, solange die Einstellungen offen sind */
+function SelfUsage() {
+  const [u, setU] = useState<{ cpu: number; mem: number; gpu: boolean } | null>(null);
+  useEffect(() => {
+    const read = () => window.api.selfUsage().then(setU);
+    read();
+    const id = setInterval(read, 2000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <Row label={t('set.self')} desc={t('set.self.desc')}>
+      <div className="self-usage" data-testid="self-usage">
+        <b>{u ? `${u.cpu.toLocaleString(undefined, { maximumFractionDigits: 1 })} %` : '…'}</b> CPU
+        <b>{u ? `${Math.round(u.mem / 1048576)} MB` : '…'}</b> RAM
+        <b>{u ? (u.gpu ? t('set.self.gpuOn') : t('set.self.gpuOff')) : '…'}</b> GPU
+      </div>
+    </Row>
   );
 }
 
@@ -220,6 +245,9 @@ function AlertsTab() {
         <Row label={t('metric.cpuTemp')}>{num('cpuTemp', '°C')}</Row>
         <Row label={t('metric.gpuTemp')}>{num('gpuTemp', '°C')}</Row>
         <Row label={t('metric.ram')}>{num('ram', '%')}</Row>
+        <Row label={t('alerts.hogs')} desc={t('alerts.hogs.desc')}>
+          <Switch on={a.hogs} onChange={(hogs) => set({ hogs })} />
+        </Row>
       </Group>
       <p className="faint small">{t('alerts.note')}</p>
     </>

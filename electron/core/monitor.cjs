@@ -7,8 +7,9 @@
  *  - Jeder Messwert darf fehlen (null) – z. B. Temperaturen ohne Admin-Rechte.
  */
 const { EventEmitter } = require('node:events');
-const { execFile, spawn } = require('node:child_process');
+const { execFile } = require('node:child_process');
 const os = require('node:os');
+const { WinSampler } = require('./winsampler.cjs');
 
 const HISTORY = 300; // 5 Minuten bei 1 Messung pro Sekunde
 const HISTORY_KEYS = ['cpu', 'ram', 'gpu', 'gpuMem', 'cpuTemp', 'gpuTemp', 'netDown', 'netUp', 'diskRead', 'diskWrite', 'swap'];
@@ -42,10 +43,15 @@ class Monitor extends EventEmitter {
    * @param {{si?: any, platform?: string, interval?: number}} [opts]
    *   si = systeminformation (im Test durch eine Attrappe ersetzbar)
    */
-  constructor({ si = require('systeminformation'), platform = process.platform, interval = 1000 } = {}) {
+  constructor({ si = require('systeminformation'), platform = process.platform, interval = 1000, winSampler } = {}) {
     super();
     this.si = si;
     this.platform = platform;
+    // Windows: eigener, sparsamer Mess-Helfer statt vieler WMI-Abfragen
+    this.ws = platform === 'win32' ? winSampler || new WinSampler() : null;
+    this.gpuPerPid = new Map();
+    this.gpuPerPidAt = 0;
+    this.slowAt = { fs: 0, bat: 0, temp: 0, tempMiss: 0 };
     this.interval = interval;
     this.history = Object.fromEntries(HISTORY_KEYS.map((k) => [k, new Ring()]));
     this.snap = null;
@@ -104,7 +110,6 @@ class Monitor extends EventEmitter {
     const changed = on !== this.live;
     this.interval = interval;
     this.live = on;
-    if (changed && this.platform === 'win32') on ? this.startWinGpu() : this.stopWinGpu();
     if (faster && this.running) this.loop(); // sofort im neuen Takt
   }
 
@@ -113,7 +118,7 @@ class Monitor extends EventEmitter {
     this.timers.forEach(clearInterval);
     this.timers = [];
     clearTimeout(this.loopTimer);
-    this.stopWinGpu();
+    this.ws?.stop();
     if (this.platform === 'win32') {
       try {
         this.si.powerShellRelease?.();
@@ -124,11 +129,11 @@ class Monitor extends EventEmitter {
   }
 
   /**
-   * Wie oft die Prozessliste gebraucht wird: 'fast' (Liste offen, Handy, Boost), 'slow' (nur automatische
-   * Spiel-Erkennung) oder 'off'. Die Liste ist die teuerste Messung – deshalb so selten wie möglich.
+   * Wie oft die Prozessliste gebraucht wird: 'fast' (Liste offen, Handy, Boost – alle 2 s), 'medium' (nur die
+   * Top-Prozesse-Kachel – alle 5 s), 'slow' (nur automatische Spiel-Erkennung – alle 10 s) oder 'off'. Die Liste ist die teuerste Messung – deshalb so selten wie möglich.
    */
   setWanted(level) {
-    level = level === true ? 'fast' : level === 'slow' ? 'slow' : level ? 'fast' : 'off';
+    level = ['fast', 'medium', 'slow'].includes(level) ? level : level === true ? 'fast' : 'off';
     const was = this.procLevel;
     this.procLevel = level;
     if (level === 'fast' && was !== 'fast' && this.running && Date.now() - this.procsAt > 1500) this.procTick(true);
@@ -173,7 +178,7 @@ class Monitor extends EventEmitter {
       const [load, mem, net, disk, speed] = await Promise.all([
         safe(() => this.si.currentLoad()),
         win ? Promise.resolve({ total: os.totalmem(), active: os.totalmem() - os.freemem(), swaptotal: this.slow.swapTotal, swapused: this.slow.swapUsed }) : safe(() => this.si.mem()),
-        netNow ? safe(() => this.si.networkStats('*')) : Promise.resolve(null),
+        !netNow ? Promise.resolve(null) : win ? safe(() => this.ws.net().then((n) => (n ? [{ rx_bytes: n.rx, tx_bytes: n.tx }] : null))) : safe(() => this.si.networkStats('*')),
         win || (this.prevDisk && Date.now() - this.prevDisk.t < 950) ? Promise.resolve(null) : safe(() => this.si.disksIO()),
         safe(() => this.si.cpuCurrentSpeed()),
       ]);
@@ -248,20 +253,30 @@ class Monitor extends EventEmitter {
   async slowTick() {
     const safe = (p) => Promise.resolve().then(p).catch(() => null);
     const win = this.platform === 'win32';
+    const now = Date.now();
+    // Windows: Laufwerke/Akku kosten WMI → nur jede Minute. Temperatur: fehlt sie 3×, nur noch alle 10 Minuten probieren
+    const due = (k, ms) => !win || now - this.slowAt[k] >= ms;
+    const wantTemp = this.slowAt.tempMiss < 3 || now - this.slowAt.temp >= 600_000;
     const [fs, bat, temp, mem] = await Promise.all([
-      safe(() => this.si.fsSize()),
-      safe(() => this.si.battery()),
-      safe(() => this.si.cpuTemperature()),
+      due('fs', 60_000) ? safe(() => this.si.fsSize()) : Promise.resolve(undefined),
+      due('bat', 60_000) ? safe(() => this.si.battery()) : Promise.resolve(undefined),
+      wantTemp ? safe(() => this.si.cpuTemperature()) : Promise.resolve(undefined),
       win ? safe(() => this.si.mem()) : Promise.resolve(null),
     ]);
+    if (fs !== undefined) this.slowAt.fs = now;
+    if (bat !== undefined) this.slowAt.bat = now;
     if (mem) {
       this.slow.swapTotal = mem.swaptotal || 0;
       this.slow.swapUsed = mem.swapused || 0;
     }
     if (Array.isArray(fs)) this.slow.disks = cleanDisks(fs, this.platform);
-    this.slow.battery = bat && bat.hasBattery ? { pct: round(bat.percent, 0), charging: !!bat.isCharging, plugged: !!bat.acConnected } : null;
-    const tc = temp && (temp.main || temp.max);
-    this.slow.cpuTemp = tc && tc > 0 && tc < 130 ? round(tc, 0) : null;
+    if (bat !== undefined) this.slow.battery = bat && bat.hasBattery ? { pct: round(bat.percent, 0), charging: !!bat.isCharging, plugged: !!bat.acConnected } : null;
+    if (temp !== undefined) {
+      this.slowAt.temp = now;
+      const tc = temp && (temp.main || temp.max);
+      this.slow.cpuTemp = tc && tc > 0 && tc < 130 ? round(tc, 0) : null;
+      this.slowAt.tempMiss = this.slow.cpuTemp === null ? this.slowAt.tempMiss + 1 : 0;
+    }
   }
 
   // ------------------------------------------------------------------ Prozesse
@@ -270,13 +285,21 @@ class Monitor extends EventEmitter {
       if (this.procLevel === 'off') return;
       if (this.procLevel === 'slow' && Date.now() - this.procsAt < 9_500) return;
     }
+    // Nur die Top-Prozesse-Kachel offen → alle 5 s reicht
+    if (!force && this.procLevel === 'medium' && Date.now() - this.procsAt < 4_500) return;
     if (this.procBusy) return;
     this.procBusy = true;
     try {
-      const p = await this.si.processes();
+      let list = this.ws ? await this.ws.processes(this.static?.cores || os.cpus().length) : null;
+      if (!list) {
+        const p = await this.si.processes();
+        list = Array.isArray(p?.list) ? p.list : [];
+      }
+      // GPU pro Prozess (Windows), wenn frisch gemessen
+      if (this.gpuPerPid.size && Date.now() - this.gpuPerPidAt < 8000) for (const x of list) x.gpu = this.gpuPerPid.get(x.pid) ?? 0;
       this.procsAt = Date.now();
-      this.procs = Array.isArray(p?.list) ? p.list : [];
-      this.slow.procCount = p?.all ?? this.procs.length;
+      this.procs = list;
+      this.slow.procCount = list.length;
       this.emit('procs', this.procs);
     } catch {
       /* nächstes Mal */
@@ -298,8 +321,34 @@ class Monitor extends EventEmitter {
         });
       read();
       this.timers.push(setInterval(read, 2000));
-    } else if (this.platform === 'win32' && this.live) {
-      this.startWinGpu();
+    } else if (this.ws) {
+      // Windows ohne NVIDIA: Leistungsindikatoren alle 3 s (nur wenn jemand zuschaut) – liefern GPU pro Prozess gratis mit
+      // Mit NVIDIA: nvidia-smi für die Gesamtwerte, GPU pro Prozess nur, wenn die Prozessliste offen ist
+      const read = async () => {
+        if (!this.live || this.gpuBusy) return;
+        this.gpuBusy = true;
+        try {
+          if (this.hasSmi) {
+            if (this.procLevel !== 'fast') return;
+            const per = await this.ws.pmon();
+            if (per) {
+              this.gpuPerPid = per;
+              this.gpuPerPidAt = Date.now();
+            }
+            return;
+          }
+          if (this.noSmi === undefined) return; // erst abwarten, ob NVIDIA da ist
+          const g = await this.ws.gpu();
+          if (!g) return;
+          this.gpu.util = g.util;
+          if (g.memUsed) this.gpu.memUsed = g.memUsed;
+          this.gpuPerPid = g.perPid;
+          this.gpuPerPidAt = Date.now();
+        } finally {
+          this.gpuBusy = false;
+        }
+      };
+      this.timers.push(setInterval(read, 3000));
     }
     // NVIDIA-Karten liefern über nvidia-smi auch Temperatur und Speicher (Windows & Linux)
     if (this.platform !== 'darwin') {
@@ -325,53 +374,9 @@ class Monitor extends EventEmitter {
     }
   }
 
-  /**
-   * Windows: GPU-Auslastung wie im Task-Manager – über Leistungsindikatoren, die bei allen Herstellern
-   * funktionieren. Die WMI-Klassennamen sind (anders als Get-Counter) in jeder Windows-Sprache gleich.
-   */
-  startWinGpu() {
-    if (this.gpuProc) return;
-    const script = [
-      '$ErrorActionPreference="SilentlyContinue"',
-      'while($true){',
-      ' $e=Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine | Where-Object { $_.Name -like "*engtype_3D*" }',
-      ' $u=($e | Measure-Object -Property UtilizationPercentage -Sum).Sum',
-      ' $m=(Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUAdapterMemory | Measure-Object -Property DedicatedUsage -Maximum).Maximum',
-      ' [Console]::Out.WriteLine("GPU " + [int]$u + " " + [int64]$m)',
-      ' Start-Sleep -Milliseconds 2000',
-      '}',
-    ].join('\n');
-    try {
-      const p = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script], { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
-      this.gpuProc = p;
-      let buf = '';
-      p.stdout.on('data', (d) => {
-        buf += d;
-        let i;
-        while ((i = buf.indexOf('\n')) >= 0) {
-          const line = buf.slice(0, i).trim();
-          buf = buf.slice(i + 1);
-          const m = /^GPU (\d+) (\d+)$/.exec(line);
-          if (!m) continue;
-          if (!this.hasSmi) this.gpu.util = Math.min(100, Number(m[1]));
-          if (!this.hasSmi && Number(m[2]) > 0) this.gpu.memUsed = Number(m[2]);
-        }
-      });
-      p.on('error', () => {});
-      p.on('exit', () => this.gpuProc === p && (this.gpuProc = null));
-    } catch {
-      /* ohne GPU-Werte weiter */
-    }
-  }
-
-  stopWinGpu() {
-    const p = this.gpuProc;
-    this.gpuProc = null;
-    try {
-      p?.kill();
-    } catch {
-      /* egal */
-    }
+  /** Eigene Hilfsprozesse (für die Anzeige "SlimManager braucht selbst …") */
+  childPids() {
+    return this.ws ? this.ws.pids() : [];
   }
 
   // ------------------------------------------------------------------ Verlauf

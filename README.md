@@ -15,6 +15,8 @@ Free · no ads · no account · no cloud · scan a QR code and your phone become
 - **Focus mode for work** – freeze background clutter, turbo off (cooler, quieter fans), pause Windows Update, close distracting apps.
 - **Zero load while gaming** – SlimManager draws without the graphics card; smooth, animated values only while you look at it, power-saving automatically as soon as a game runs.
 - **Clean up** – close background programs you don't need in one go. System processes are protected.
+- **Tap any tile** for a detail view: big graph, min/average/peak and which apps use the most (CPU, RAM, GPU per app on Windows).
+- **Edit the dashboard on your phone or iPad**, too. **Start with the computer**, **power-hog alerts**, live display of SlimManager's own usage.
 - **Fullscreen** (F11) – perfect as a second-screen dashboard. **Mini overlay** – a small always-on-top stats bar (Ctrl+Shift+O).
 - **Alerts** when your PC gets too hot or memory runs full · share layouts as a file · English & German · light/dark · simple & pro mode.
 

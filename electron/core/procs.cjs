@@ -95,6 +95,8 @@ function normalize(list, { platform = process.platform, cores = os.cpus().length
         app: appName(p, platform),
         cpu: Math.round((perCore ? cpu / Math.max(1, cores) : cpu) * 10) / 10,
         mem: (Number(p.memRss) || 0) * 1024,
+        // GPU in % (nur Windows: Leistungsindikatoren bzw. nvidia-smi) – sonst null
+        gpu: Number.isFinite(p.gpu) ? p.gpu : null,
         path: exePath(p, platform),
         user: String(p.user || ''),
         // Mac/Linux: "nice" ist das, was man selbst verstellen kann (Kernel-Priorität schwankt ständig)
@@ -127,11 +129,12 @@ function group(procs) {
     const key = p.kind === 'system' ? 'sys:' + p.name.toLowerCase() : p.app.toLowerCase();
     let g = map.get(key);
     if (!g) {
-      g = { id: key, name: p.kind === 'system' ? p.name.replace(/\.exe$/i, '') : p.app, cpu: 0, mem: 0, pids: [], count: 0, kind: p.kind, prio: p.prio, path: p.path, exe: p.name };
+      g = { id: key, name: p.kind === 'system' ? p.name.replace(/\.exe$/i, '') : p.app, cpu: 0, mem: 0, gpu: null, pids: [], count: 0, kind: p.kind, prio: p.prio, path: p.path, exe: p.name };
       map.set(key, g);
     }
     g.cpu += p.cpu;
     g.mem += p.mem;
+    if (p.gpu !== null) g.gpu = Math.min(100, (g.gpu || 0) + p.gpu);
     g.pids.push(p.pid);
     g.count += 1;
     if (KIND_RANK[p.kind] > KIND_RANK[g.kind]) g.kind = p.kind;

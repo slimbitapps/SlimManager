@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { t, type TKey } from '../i18n';
-import { useStore, updateSettings, setEditing, setEditTarget, setView, setImage, toast, toggleFullscreen } from '../store';
+import { useStore, updateSettings, setEditing, setEditTarget, setView, setImage, toast, toggleFullscreen, showProcesses } from '../store';
 import { Dashboard } from '../shared/Dashboard';
 import type { WidgetData } from '../shared/WidgetView';
 import { defaultLayout, makeWidget, METRIC, METRICS, needsProcs, PRESETS, SIZES, SKINS, stylesFor, WIDGET_TYPES } from '../shared/widgets';
@@ -60,12 +60,19 @@ export function DashboardView() {
   const layout = useLayout(editing ? target : 'pc');
   const data = useWidgetData();
 
+  // Detail-Ansicht offen → Prozessliste schnell messen (für "Wer verbraucht am meisten")
+  const [detailOpen, setDetailOpen] = useState(false);
+  useEffect(() => {
+    if (!detailOpen) return;
+    window.api.watchProcs(true, 'fast').then((p) => useStore.setState({ procs: p }));
+    return () => void window.api.watchProcs(false, 'fast');
+  }, [detailOpen]);
   // Prozessliste nur messen lassen, wenn ein Widget sie zeigt
   const wantProcs = needsProcs(layout);
   useEffect(() => {
     if (!wantProcs) return;
-    window.api.watchProcs(true).then((p) => useStore.setState({ procs: p }));
-    return () => void window.api.watchProcs(false);
+    window.api.watchProcs(true, 'medium').then((p) => useStore.setState({ procs: p }));
+    return () => void window.api.watchProcs(false, 'medium');
   }, [wantProcs]);
 
   const save = (next: Widget[]) => updateSettings({ layout: { [target]: next } });
@@ -143,7 +150,22 @@ export function DashboardView() {
       </header>}
       <div className="dash-area">
         <div className={`dash-holder ${editing && target === 'phone' ? 'phone-frame' : ''}`}>
-          <Dashboard look={look} image={image} layout={layout} data={data} edit={edit} maxCols={editing && target === 'phone' ? 2 : 6} minCol={editing && target === 'phone' ? 150 : 210} testId="dashboard" />
+          <Dashboard
+            look={look}
+            image={image}
+            layout={layout}
+            data={data}
+            edit={edit}
+            maxCols={editing && target === 'phone' ? 2 : 6}
+            minCol={editing && target === 'phone' ? 150 : 210}
+            testId="dashboard"
+            onDetail={(k) => setDetailOpen(!!k)}
+            onApp={(g) => showProcesses(g.name)}
+            onAll={() => showProcesses()}
+            onBoostTile={() => (fullscreen ? undefined : setView('boost'))}
+          >
+            {!editing && !fullscreen && <DashTip />}
+          </Dashboard>
         </div>
         {editing && (
           <aside className="edit-panel" data-testid="edit-panel">
@@ -167,6 +189,36 @@ export function DashboardView() {
           </aside>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Einmaliger Hinweis: Kacheln anklicken, "Anpassen" zum Bearbeiten */
+function DashTip() {
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return localStorage.getItem('slimmanager.tip') === '1';
+    } catch {
+      return false;
+    }
+  });
+  if (hidden) return null;
+  return (
+    <div className="dash-tip" data-testid="dash-tip">
+      <span>💡 {t('dash.tip')}</span>
+      <button
+        onClick={() => {
+          setHidden(true);
+          try {
+            localStorage.setItem('slimmanager.tip', '1');
+          } catch {
+            /* egal */
+          }
+        }}
+        aria-label={t('common.close')}
+      >
+        ✕
+      </button>
     </div>
   );
 }

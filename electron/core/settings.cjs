@@ -26,10 +26,11 @@ const DEFAULTS = {
     focus: { lowerOthers: true, freezeBg: true, freezeList: [], closeList: [], quiet: true, services: false },
   },
   overlay: { enabled: false, corner: 'tr', metrics: ['cpu', 'gpu', 'ram', 'netDown'], opacity: 0.85, scale: 1, hotkey: true },
-  alerts: { enabled: false, cpuTemp: 90, gpuTemp: 85, ram: 92 },
+  // hogs: Warnung, wenn eine App lange viel CPU frisst
+  alerts: { enabled: false, cpuTemp: 90, gpuTemp: 85, ram: 92, hogs: true },
   // gpu: false = SlimManager benutzt die Grafikkarte nicht (die gehört dem Spiel)
   // rate: Aktualisierung in ms, solange man hinschaut · liveInGame: auch beim Zocken flüssig (kostet etwas Leistung)
-  app: { closeToTray: false, gpu: false, rate: 1000, liveInGame: false },
+  app: { closeToTray: false, gpu: false, rate: 1000, liveInGame: false, autostart: false },
   devices: [],
   window: {},
 };

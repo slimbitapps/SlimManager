@@ -29,6 +29,8 @@ interface State {
   editing: boolean;
   editTarget: 'pc' | 'phone';
   fullscreen: boolean;
+  /** Suche, mit der die Prozess-Ansicht öffnen soll (z. B. aus der Detail-Ansicht) */
+  procQuery: string;
   /** flüssige Anzeige mit Zähl-Animation? (aus, solange gezockt wird) */
   lively: boolean;
   approvals: { id: string; name: string }[];
@@ -53,6 +55,7 @@ export const useStore = create<State>(() => ({
   editing: false,
   editTarget: 'pc',
   fullscreen: false,
+  procQuery: '',
   lively: true,
   approvals: [],
   dialog: null,
@@ -121,6 +124,7 @@ export async function init() {
   window.api.on('game', (game: string | null) => get().game !== game && set({ game }));
   window.api.on('settings', (settings: Settings) => set({ settings }));
   window.api.on('navigate', (view: View) => set({ view }));
+  window.api.on('show-process', (name: string) => showProcesses(name));
   window.api.on('fullscreen', (fullscreen: boolean) => set({ fullscreen, view: fullscreen ? 'dashboard' : get().view, editing: fullscreen ? false : get().editing }));
   // F11 = Vollbild-Dashboard, Esc = zurück
   addEventListener('keydown', (e) => {
@@ -155,6 +159,11 @@ export async function finishOnboarding() {
 
 export function setView(view: View) {
   set({ view, editing: false });
+}
+/** Zur Prozess-Ansicht springen, gleich nach einer App gefiltert */
+export function showProcesses(query = '') {
+  if (get().fullscreen) window.api.setFullscreen(false);
+  set({ view: 'processes', editing: false, procQuery: query });
 }
 export function toggleFullscreen(displayId?: string) {
   set({ view: 'dashboard', editing: false });

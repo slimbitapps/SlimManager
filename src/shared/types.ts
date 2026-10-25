@@ -55,6 +55,8 @@ export interface ProcGroup {
   name: string;
   cpu: number;
   mem: number;
+  /** GPU in % – nur unter Windows, sonst null */
+  gpu?: number | null;
   count: number;
   kind: Kind;
   prio: Level;
@@ -70,6 +72,7 @@ export interface Proc {
   app: string;
   cpu: number;
   mem: number;
+  gpu: number | null;
   path: string;
   user: string;
   prio: Level;

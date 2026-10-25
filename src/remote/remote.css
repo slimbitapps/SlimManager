@@ -263,14 +263,14 @@ select {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
-  z-index: 50;
+  z-index: 130; /* auch über der Detail-Ansicht */
 }
 .r-sheet {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 51;
+  z-index: 131;
   background: #17152b;
   border-radius: 20px 20px 0 0;
   padding: 16px 16px calc(env(safe-area-inset-bottom) + 18px);
@@ -439,4 +439,85 @@ select {
 }
 .r-btn.big.focus {
   background: linear-gradient(135deg, #10b981, #0ea5e9);
+}
+.r-num.gpu {
+  color: #67e8f9;
+}
+.r-editbar,
+.r-tilebar {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  z-index: 20;
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 16px;
+  background: rgba(23, 21, 43, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+.r-editbar {
+  top: 8px;
+}
+.r-tilebar {
+  bottom: 10px;
+}
+.r-editbar button,
+.r-tilebar button {
+  flex: 1;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 6px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.r-editbar button.primary {
+  background: linear-gradient(135deg, #8b5cf6, #06b6d4);
+  color: #fff;
+}
+.r-tilebar button.danger {
+  flex: 0 0 48px;
+  background: rgba(255, 77, 109, 0.2);
+  color: #ff7a93;
+}
+.r-tilebar button:disabled {
+  opacity: 0.35;
+}
+.r-main .dash.editing .dash-scroll {
+  padding-top: 70px;
+  padding-bottom: 80px;
+}
+.r-addgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.r-addgrid button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  border-radius: 10px;
+  padding: 11px 10px;
+  font-size: 13px;
+  text-align: left;
+}
+.r-addgrid i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: #6b6590;
+  flex-shrink: 0;
+  --c-cpu: #8b5cf6;
+  --c-gpu: #22d3ee;
+  --c-ram: #f472b6;
+  --c-temp: #fb923c;
+  --c-net: #34d399;
+  --c-net2: #a3e635;
+  --c-disk: #facc15;
+  --c-disk2: #fb7185;
 }

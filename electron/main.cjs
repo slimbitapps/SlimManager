@@ -19,6 +19,7 @@ const { cleanLayout, cleanLook } = require('./core/layout.cjs');
 const isDev = !!process.env.VITE_DEV_SERVER_URL;
 const isTest = !!process.env.SLIMMANAGER_TEST;
 const isMac = process.platform === 'darwin';
+const startHidden = process.argv.includes('--hidden');
 if (process.env.SLIMMANAGER_USERDATA) app.setPath('userData', process.env.SLIMMANAGER_USERDATA);
 
 const DIST = path.join(__dirname, '..', 'dist');
@@ -68,7 +69,9 @@ let server = null;
 let addresses = [];
 let quitting = false;
 let procCache = { flat: [], groups: [], at: 0 };
-let rendererWantsProcs = false;
+/** Wer im Fenster die Prozessliste braucht: fast = Prozesse/Boost/Detail-Ansicht, medium = nur Top-Prozesse-Kachel */
+const rendererWatch = { fast: 0, medium: 0 };
+const rendererWants = () => rendererWatch.fast > 0 || rendererWatch.medium > 0;
 const pendingApprovals = new Map();
 const alertAt = {};
 
@@ -85,7 +88,7 @@ function syncWindow() {
   updateProcWanted();
   if (!winVisible()) return;
   send('sync', { snap: monitor.snap, history: monitor.historyOf(300) });
-  if (rendererWantsProcs && procCache.at) send('procs', procCache);
+  if (rendererWants() && procCache.at) send('procs', procCache);
 }
 /**
  * Wie lebendig soll die Anzeige sein?
@@ -100,7 +103,9 @@ function updateLive() {
   const phones = server ? server.clients().length : 0;
   const gaming = boost.active || !!lastGame;
   const focused = visible && win.isFocused();
-  const on = focused || ((visible || phones > 0) && (!gaming || settings.data.app.liveInGame));
+  // Flüssig nur, wenn man wirklich hinschaut: Fenster vorne, Vollbild (Zweitmonitor) oder ein Handy – und kein Spiel läuft
+  const watching = (visible && win.isFullScreen()) || phones > 0;
+  const on = focused || (watching && !gaming) || ((visible || phones > 0) && settings.data.app.liveInGame);
   const live = visible || phones > 0 || !!(overlay && !overlay.isDestroyed());
   monitor.setLive(live, on ? settings.data.app.rate : 1000);
   if (on !== lively) {
@@ -119,13 +124,15 @@ const TXT = {
     open: 'SlimManager öffnen', boostOn: 'Game Boost starten', boostOff: 'Game Boost beenden', overlay: 'Mini-Anzeige', quit: 'Beenden',
     noGame: 'Kein Spiel erkannt', noGameText: 'Starte zuerst ein Spiel oder wähle es in SlimManager unter „Boost“ aus.',
     focusStarted: 'Fokus-Modus aktiv', boostStarted: 'Game Boost aktiv', boostStopped: 'Game Boost beendet', hot: 'Achtung: {what} ist hoch ({v})',
-    cpuTemp: 'CPU-Temperatur', gpuTemp: 'GPU-Temperatur', ram: 'Arbeitsspeicher', exportTitle: 'Layout speichern', importTitle: 'Layout laden', image: 'Bild',
+    cpuTemp: 'CPU-Temperatur', gpuTemp: 'GPU-Temperatur', ram: 'Arbeitsspeicher',
+    hogTitle: 'Eine App braucht viel Leistung', hogText: '„{name}“ braucht seit {m} Min. {v} % der CPU. Klicken zum Ansehen.', exportTitle: 'Layout speichern', importTitle: 'Layout laden', image: 'Bild',
   },
   en: {
     open: 'Open SlimManager', boostOn: 'Start Game Boost', boostOff: 'Stop Game Boost', overlay: 'Mini overlay', quit: 'Quit',
     noGame: 'No game detected', noGameText: 'Start a game first or pick it in SlimManager under “Boost”.',
     focusStarted: 'Focus mode active', boostStarted: 'Game Boost active', boostStopped: 'Game Boost stopped', hot: 'Warning: {what} is high ({v})',
-    cpuTemp: 'CPU temperature', gpuTemp: 'GPU temperature', ram: 'Memory', exportTitle: 'Save layout', importTitle: 'Load layout', image: 'Image',
+    cpuTemp: 'CPU temperature', gpuTemp: 'GPU temperature', ram: 'Memory',
+    hogTitle: 'An app is using a lot of power', hogText: '“{name}” has been using {v}% CPU for {m} min. Click to see.', exportTitle: 'Save layout', importTitle: 'Load layout', image: 'Image',
   },
 };
 const tx = (k, p = {}) => {
@@ -161,7 +168,8 @@ function createWindow() {
       spellcheck: false,
     },
   });
-  win.once('ready-to-show', () => win.show());
+  // Mit dem Computer gestartet → still in der Taskleiste bleiben
+  win.once('ready-to-show', () => !startHidden && win.show());
   const remember = () => {
     if (!win || win.isDestroyed() || win.isMaximized() || win.isMinimized()) return;
     settings.data.window = win.getBounds();
@@ -171,8 +179,8 @@ function createWindow() {
   win.on('moved', remember);
   for (const ev of ['show', 'restore', 'focus']) win.on(ev, syncWindow);
   win.on('blur', () => updateLive());
-  win.on('enter-full-screen', () => send('fullscreen', true));
-  win.on('leave-full-screen', () => send('fullscreen', false));
+  win.on('enter-full-screen', () => (send('fullscreen', true), updateLive()));
+  win.on('leave-full-screen', () => (send('fullscreen', false), updateLive()));
   for (const ev of ['hide', 'minimize']) win.on(ev, () => (updateLive(), updateProcWanted()));
   win.on('close', (e) => {
     // "Im Hintergrund weiterlaufen": Fenster nur verstecken, Taskleisten-Symbol bleibt
@@ -183,7 +191,7 @@ function createWindow() {
   });
   win.on('closed', () => {
     win = null;
-    rendererWantsProcs = false;
+    rendererWatch.fast = rendererWatch.medium = 0;
     if ((!isMac && !settings.data.app.closeToTray) || isTest) app.quit();
   });
   // Links (z. B. zur Website) im normalen Browser öffnen, nie im App-Fenster
@@ -323,7 +331,17 @@ function onPhoneCommand({ c, a, name, reply }) {
   else if (c === 'prio') res = prioGroup(String(arg.id || ''), String(arg.level || ''));
   else if (c === 'boost') return startBoost(String(arg.app || ''), false, arg.mode === 'focus' ? 'focus' : 'game').then((r) => finish(r));
   else if (c === 'unboost') return stopBoost().then((r) => finish(r));
-  else if (c === 'overlay') {
+  else if (c === 'layout') {
+    // Handy-Layout vom Handy aus bearbeitet (null = zurück zum Standard)
+    const list = arg.list === null ? null : cleanLayout(arg.list);
+    if (arg.list !== null && !list) res = { ok: false, error: 'bad' };
+    else {
+      settings.update({ layout: { phone: list } });
+      send('settings', settings.public());
+      broadcastConfig();
+      return reply({ t: 'result', c, ok: true, quiet: true });
+    }
+  } else if (c === 'overlay') {
     setOverlay(!!arg.on);
     res = { ok: true };
   }
@@ -348,10 +366,11 @@ function onProcs(list) {
   const flat = normalize(list, { cores: monitor.static?.cores || os.cpus().length, selfPids: selfPids(), games: settings.data.boost.games });
   const groups = group(flat).sort((x, y) => y.cpu - x.cpu || y.mem - x.mem);
   procCache = { flat, groups, at: Date.now() };
-  if (rendererWantsProcs && winVisible()) send('procs', procCache);
+  if (rendererWants() && winVisible()) send('procs', procCache);
   if (server && server.subscribers('procs')) server.broadcast({ t: 'procs', p: phoneGroups(groups) }, 'procs');
   boost.follow(flat);
   autoBoost(groups);
+  checkHogs(groups);
   const game = detectGame(groups);
   if (game !== lastGame) {
     lastGame = game;
@@ -364,12 +383,14 @@ function onProcs(list) {
 function phoneGroups(groups) {
   const sys = groups.filter((g) => g.kind === 'system' || g.kind === 'self').slice(0, 30);
   const rest = groups.filter((g) => g.kind !== 'system' && g.kind !== 'self').slice(0, 150);
-  return [...rest, ...sys].map((g) => ({ id: g.id, name: g.name, cpu: g.cpu, mem: g.mem, count: g.count, kind: g.kind, prio: g.prio }));
+  return [...rest, ...sys].map((g) => ({ id: g.id, name: g.name, cpu: g.cpu, mem: g.mem, gpu: g.gpu, count: g.count, kind: g.kind, prio: g.prio }));
 }
 
 function updateProcWanted() {
-  const fast = (rendererWantsProcs && winVisible()) || (server ? server.subscribers('procs') : 0) > 0 || boost.active;
-  monitor.setWanted(fast ? 'fast' : settings.data.boost.auto ? 'slow' : 'off');
+  const vis = winVisible();
+  const fast = (rendererWatch.fast > 0 && vis) || (server ? server.subscribers('procs') : 0) > 0;
+  const medium = (rendererWatch.medium > 0 && vis) || boost.active || (settings.data.alerts.enabled && settings.data.alerts.hogs);
+  monitor.setWanted(fast ? 'fast' : medium ? 'medium' : settings.data.boost.auto ? 'slow' : 'off');
 }
 
 function findGroup(id) {
@@ -578,13 +599,42 @@ function createTray() {
 }
 
 // ------------------------------------------------------------------ Warnungen & Mitteilungen
-function notify(title, body) {
+function notify(title, body, onClick) {
   if (isTest || !Notification.isSupported()) return;
   try {
-    new Notification({ title, body, silent: true }).show();
+    const n = new Notification({ title, body, silent: true });
+    if (onClick) n.on('click', onClick);
+    n.show();
   } catch {
     /* egal */
   }
+}
+
+/**
+ * "Fresser"-Warnung: Eine App braucht seit über 90 s mehr als 25 % der gesamten CPU (z. B. ein hängender Browser-Tab).
+ * Spiele, System und SlimManager zählen nicht. Pro App höchstens alle 10 Minuten.
+ */
+const hogSince = new Map();
+const hogTold = new Map();
+function checkHogs(groups) {
+  const a = settings.data.alerts;
+  if (!a.enabled || !a.hogs) return hogSince.clear();
+  const now = Date.now();
+  const seen = new Set();
+  for (const g of groups) {
+    if ((g.kind !== 'app' && g.kind !== 'background') || g.cpu < 25 || (boost.active && g.name === boost.session?.app)) continue;
+    seen.add(g.id);
+    if (!hogSince.has(g.id)) hogSince.set(g.id, now);
+    const since = hogSince.get(g.id);
+    if (now - since >= 90_000 && now - (hogTold.get(g.id) || 0) > 10 * 60_000) {
+      hogTold.set(g.id, now);
+      notify(tx('hogTitle'), tx('hogText', { name: g.name, v: Math.round(g.cpu), m: Math.round((now - since) / 60_000) || 1 }), () => {
+        showWindow();
+        send('show-process', g.name);
+      });
+    }
+  }
+  for (const id of [...hogSince.keys()]) if (!seen.has(id)) hogSince.delete(id);
 }
 function checkAlerts(s) {
   const a = settings.data.alerts;
@@ -651,7 +701,11 @@ handle('settings:set', async (partial) => {
     updateProcWanted();
   }
   if (partial && partial.prefs) buildTrayMenu();
-  if (partial && partial.app) updateLive();
+  if (partial && partial.app) {
+    updateLive();
+    if (partial.app.autostart !== undefined) setAutostart(settings.data.app.autostart);
+  }
+  if (partial && partial.alerts) updateProcWanted();
   if (JSON.stringify(settings.data.network) !== before) {
     if (partial.network && partial.network.port !== undefined && server) {
       await server.stop();
@@ -669,8 +723,9 @@ handle('app:info', () => ({
 }));
 handle('sys:static', () => monitor.static);
 handle('stats:get', () => ({ snap: monitor.snap, history: monitor.historyOf(300), lively: !!lively }));
-handle('procs:watch', (on) => {
-  rendererWantsProcs = !!on;
+handle('procs:watch', (on, level) => {
+  const lvl = level === 'medium' ? 'medium' : 'fast';
+  rendererWatch[lvl] = Math.max(0, rendererWatch[lvl] + (on ? 1 : -1));
   updateProcWanted();
   return procCache;
 });
@@ -773,6 +828,29 @@ handle('win:theme', (theme) => {
   }
 });
 handle('app:log', (...a) => log('renderer', ...a));
+/** Eigener Verbrauch von SlimManager (alle eigenen Prozesse + Helfer) – zum Vorzeigen und Prüfen */
+handle('self:usage', () => {
+  const cores = os.cpus().length || 1;
+  let cpu = 0;
+  let mem = 0;
+  try {
+    for (const m of app.getAppMetrics()) {
+      cpu += m.cpu.percentCPUUsage || 0;
+      mem += (m.memory?.workingSetSize || 0) * 1024;
+    }
+  } catch {
+    /* egal */
+  }
+  // Helfer-Prozesse (Windows-Messung, Tweaks, Wächter), falls in der Prozessliste
+  const helpers = new Set([...monitor.childPids(), tweaks.helper?.pid, tweaks.watchdog?.pid].filter(Boolean));
+  let helperCpu = 0;
+  for (const p of procCache.flat) {
+    if (!helpers.has(p.pid)) continue;
+    helperCpu += p.cpu;
+    mem += p.mem;
+  }
+  return { cpu: Math.round((cpu / cores + helperCpu) * 10) / 10, mem, gpu: app.getGPUFeatureStatus().gpu_compositing.startsWith('enabled') };
+});
 handle('app:relaunch', () => {
   quitting = true;
   app.relaunch();
@@ -803,6 +881,16 @@ handle('win:fullscreen', async (on, displayId) => {
   win.setFullScreen(true);
   return true;
 });
+
+/** Mit dem Computer starten (unsichtbar, nur Taskleisten-Symbol) */
+function setAutostart(on) {
+  if (isTest) return;
+  try {
+    app.setLoginItemSettings({ openAtLogin: !!on, openAsHidden: true, args: ['--hidden'] });
+  } catch (e) {
+    log('autostart', e);
+  }
+}
 
 // ------------------------------------------------------------------ Tastenkürzel (auch im Spiel)
 function registerHotkeys() {
@@ -868,6 +956,8 @@ app.whenReady().then(async () => {
 });
 
 app.on('second-instance', showWindow);
+// Gestartet mit dem Computer, aber Fenster versteckt: Taskleisten-Symbol muss es geben, sonst sähe man die App nicht
+if (startHidden) settings.data.app.closeToTray = true;
 app.on('activate', showWindow);
 app.on('window-all-closed', () => {
   if ((!isMac && !settings.data.app.closeToTray) || isTest) app.quit();

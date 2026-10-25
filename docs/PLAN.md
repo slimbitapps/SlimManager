@@ -36,6 +36,8 @@ kein Konto, keine Werbung, alles lokal.
 - Flüssige Anzeige: 1/2/4× pro Sekunde, Zähl-Effekt, Nachkommastellen, Tacho mit Zeiger, Leuchten, Spitzenwert; Vollbild (F11, Zweitmonitor)
 - Boost 2.0: Gaming + Fokus, Ausnahmen („Nie anfassen“), Einfrieren (Ballast + eigene Liste), CPU-Kerne freihalten, Energieplan,
   RAM freigeben, Windows-Update & Co. pausieren (Admin), Wirkung vorher/nachher, absturzsicher (Wächter + undo.json)
+- Detail-Ansicht beim Antippen einer Kachel (PC + Handy), GPU pro App (Windows) + Sortieren, Dashboard am Handy/iPad bearbeiten,
+  eigener Verbrauch sichtbar, Autostart, Warnung bei Leistungsfressern, sparsamer Windows-Mess-Helfer (statt WMI)
 - Game Boost: Spiel-Erkennung (Steam, Epic, Riot, GOG, EA, Ubisoft, Xbox, Battle.net, Minecraft, Roblox + eigene Liste),
   manuell / automatisch / Tastenkürzel, Spiel hochstufen, andere bremsen (Mac: Hintergrund-Modus), Schließ-Liste,
   sauberes Zurücksetzen, Zusammenfassung nach der Runde
@@ -49,7 +51,8 @@ kein Konto, keine Werbung, alles lokal.
 - Einfrieren/Auftauen über den PowerShell-Helfer (NtSuspendProcess), CPU-Kerne, RAM freigeben
 - Energieplan „Höchstleistung“ und „Turbo aus“ – und dass beides nach dem Boost wieder stimmt
 - Admin-Helfer für Windows-Update & Co. (eine UAC-Abfrage, Dienste starten danach wieder)
-- GPU-Auslastung (alle Hersteller) und NVIDIA-Temperatur
+- GPU-Auslastung (alle Hersteller) und NVIDIA-Temperatur, GPU pro App (Leistungsindikatoren / nvidia-smi pmon)
+- Neuer Mess-Helfer (Prozessliste über .NET, netstat) – eigener Verbrauch sollte unter 1 % liegen
 
 ## Version 2 – Ideen (nach Wichtigkeit)
 

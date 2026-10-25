@@ -43,8 +43,8 @@ export interface Settings {
     focus: { lowerOthers: boolean; freezeBg: boolean; freezeList: string[]; closeList: string[]; quiet: boolean; services: boolean };
   };
   overlay: OverlayCfg;
-  alerts: { enabled: boolean; cpuTemp: number; gpuTemp: number; ram: number };
-  app: { closeToTray: boolean; gpu: boolean; rate: number; liveInGame: boolean };
+  alerts: { enabled: boolean; cpuTemp: number; gpuTemp: number; ram: number; hogs: boolean };
+  app: { closeToTray: boolean; gpu: boolean; rate: number; liveInGame: boolean; autostart: boolean };
   devices: Device[];
 }
 
@@ -92,7 +92,7 @@ export interface Api {
   appInfo(): Promise<AppInfo>;
   sysStatic(): Promise<SysInfo | null>;
   getStats(): Promise<{ snap: Stats | null; history: History; lively: boolean }>;
-  watchProcs(on: boolean): Promise<ProcData>;
+  watchProcs(on: boolean, level?: 'fast' | 'medium'): Promise<ProcData>;
   killGroup(id: string): Promise<Result>;
   killPid(pid: number): Promise<Result>;
   prioGroup(id: string, level: Level): Promise<Result>;
@@ -124,6 +124,7 @@ export interface Api {
   setTheme(theme: string): Promise<void>;
   log(...a: unknown[]): Promise<void>;
   relaunch(): Promise<void>;
+  selfUsage(): Promise<{ cpu: number; mem: number; gpu: boolean }>;
   displays(): Promise<{ id: string; label: string; primary: boolean; current: boolean; w: number; h: number }[]>;
   setFullscreen(on: boolean, displayId?: string): Promise<boolean>;
   gpuStatus(): Promise<string>;

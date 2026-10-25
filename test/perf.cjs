@@ -61,8 +61,9 @@ async function gpuAvg(secs) {
   if (baseline !== null) console.log(`GPU-Auslastung Mac gesamt: ohne SlimManager ${baseline} % → mit SlimManager ${Math.round(gpuSum / (n * 2))} %`);
   const avg = Object.fromEntries(Object.entries(sum).map(([k, v]) => [k, Math.round((v / n) * 10) / 10]));
   const gpuRender = (avg.GPU || 0) + (avg.Tab || 0);
+  const total = Object.values(avg).reduce((a, b) => a + b, 0) / os.cpus().length;
   const gpuOn = await app.evaluate(({ app }) => app.getGPUFeatureStatus().gpu_compositing);
-  console.log(`${process.env.PERF_MIN === '1' ? '[minimiert] ' : ''}Rate ${process.env.PERF_RATE || 1000} ms · Skin ${skin}/${bg} · GPU-Beschleunigung: ${gpuOn} · Durchschnitt (% eines Kerns):`, avg, `→ Grafik+Fenster: ${gpuRender.toFixed(1)} %`);
+  console.log(`${process.env.PERF_MIN === '1' ? '[minimiert] ' : ''}Rate ${process.env.PERF_RATE || 1000} ms · Skin ${skin}/${bg} · GPU-Beschleunigung: ${gpuOn} · Durchschnitt (% eines Kerns):`, avg, `→ Grafik+Fenster: ${gpuRender.toFixed(1)} % · gesamt wie im Task-Manager: ${total.toFixed(2)} % der CPU`);
   await app.close();
   if (process.env.PERF_MAX && gpuRender > Number(process.env.PERF_MAX)) {
     console.error(`✗ zu hoch (Grenze ${process.env.PERF_MAX} %)`);
