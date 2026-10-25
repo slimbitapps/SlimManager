@@ -50,13 +50,17 @@ kein Konto, keine Werbung, alles lokal.
 
 - Hülle in Rust (src-tauri/), Kern als eigenständiges Programm (core/main.cjs → scripts/build-core.sh), Oberfläche unverändert
 - Gemessen (Mac, fertige App): ca. 220 MB statt 480 MB, DMG 39 MB statt 107 MB, CPU im Vordergrund ca. 2–3 % eines Kerns
-- Noch offen: Windows-Build (geht nur auf Windows bzw. GitHub Actions), Mini-Anzeige/Taskleiste/Tastenkürzel von Hand prüfen,
-  danach Electron-Teile entfernen
+- Electron ist aus der App entfernt (nur noch Test-Browser für den Klick-Test und Werkzeug für Logo/Store-Bilder)
+- Windows: Setup.exe (NSIS, ohne Admin) + portable ZIP werden in GitHub Actions gebaut; dort läuft vorher
+  `test/smoke.cjs` gegen das fertige Kern-Programm auf echtem Windows (Messwerte, Prozesse, Symbole, Einfrieren, Energieplan)
+- Mac: eigene DMGs für Apple-Chip und Intel (je nativ gebaut)
+- Noch offen: Mini-Anzeige/Taskleiste/Tastenkürzel unter Windows von Hand prüfen; Portable-ZIP braucht WebView2
+  (bei Windows 11 immer da, bei Windows 10 fast immer – der Installer lädt es sonst nach)
 
 ## Noch auf echtem Windows zu prüfen (konnte am Mac nicht getestet werden)
 
-- Einfrieren/Auftauen über den PowerShell-Helfer (NtSuspendProcess), CPU-Kerne, RAM freigeben
-- Energieplan „Höchstleistung“ und „Turbo aus“ – und dass beides nach dem Boost wieder stimmt
+- Einfrieren/Auftauen, RAM freigeben und Energieplan lesen prüft jetzt der Rauchtest in GitHub Actions automatisch
+- Energieplan „Höchstleistung“ und „Turbo aus“ umschalten – und dass beides nach dem Boost wieder stimmt
 - Admin-Helfer für Windows-Update & Co. (eine UAC-Abfrage, Dienste starten danach wieder)
 - GPU-Auslastung (alle Hersteller) und NVIDIA-Temperatur, GPU pro App (Leistungsindikatoren / nvidia-smi pmon)
 - Neuer Mess-Helfer (Prozessliste über .NET, netstat) – eigener Verbrauch sollte unter 1 % liegen

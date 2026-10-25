@@ -20,7 +20,8 @@ cat > build-core/sea.json <<JSON
 JSON
 node --experimental-sea-config build-core/sea.json >/dev/null
 rm -f "$OUT"
-cp "$(node -p process.execPath)" "$OUT"
+# Node-Laufzeit kopieren (über Node selbst – funktioniert auch mit Windows-Pfaden in Git-Bash)
+node -e "require('fs').copyFileSync(process.execPath, process.argv[1])" "$OUT"
 chmod u+w "$OUT"
 if [ "$(uname)" = Darwin ]; then codesign --remove-signature "$OUT"; fi
 MACHO=""; [ "$(uname)" = Darwin ] && MACHO="--macho-segment-name NODE_SEA"

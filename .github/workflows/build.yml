@@ -1,12 +1,14 @@
-# Baut automatisch die Installer für Windows und Mac.
+# Baut automatisch die Installer für Windows und Mac (Tauri-Version).
 # Ergebnis: unter "Actions" -> letzter Lauf -> "Artifacts".
 # Bei einem Versions-Tag (z. B. v1.0.0) oder Push auf main entsteht ein Release, von dem die
 # Download-Seite immer die neueste Version verlinkt.
 #
-# Optionale Geheimnisse (Settings -> Secrets -> Actions), siehe VEROEFFENTLICHEN.md:
-#   Mac:     MAC_CERT_P12_BASE64, MAC_CERT_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
-#   Windows: WIN_CERT_P12_BASE64, WIN_CERT_PASSWORD
-# Ohne sie wird trotzdem gebaut, aber unsigniert (dann warnen Windows/macOS beim Öffnen).
+# Kostet nichts: GitHub Actions ist für öffentliche Projekte kostenlos. Ohne Zertifikate wird
+# unsigniert gebaut (Windows zeigt dann "SmartScreen", macOS "nicht verifizierter Entwickler" – die
+# Download-Seite erklärt, wie man trotzdem öffnet).
+#
+# Optional, falls später vorhanden (Settings -> Secrets -> Actions):
+#   Mac: APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY, APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID
 name: Installer bauen
 
 on:
@@ -15,82 +17,94 @@ on:
     tags: ['v*']
     # Nur Texte/Webseiten/Videos geändert → keine neuen Installer bauen
     paths-ignore: ['website/**', 'brand/**', 'docs/**', 'marketing/**', 'scripts/video/**', 'scripts/store-shots.cjs', '**/*.md', '.github/workflows/pages.yml', '.gitignore']
+  pull_request:
   workflow_dispatch:
 
 jobs:
   windows:
     runs-on: windows-latest
+    defaults:
+      run: { shell: bash }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with: { workspaces: src-tauri }
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      - run: npm run build
-      - name: Installer (Setup.exe) + portable ZIP
-        shell: bash
-        env:
-          CSC_LINK: ${{ secrets.WIN_CERT_P12_BASE64 }}
-          CSC_KEY_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
-        run: npx electron-builder --win nsis zip --x64 --publish never
+      - name: Kern-Programm bauen
+        run: TRIPLE=x86_64-pc-windows-msvc bash scripts/build-core.sh
+      - name: Rauchtest auf echtem Windows (Messwerte, Prozesse, Symbole, Einfrieren, Energieplan)
+        run: node test/smoke.cjs src-tauri/binaries/slimmanager-core-x86_64-pc-windows-msvc.exe
+      - name: Installer (Setup.exe)
+        run: npx tauri build --bundles nsis
+      - name: Dateien einsammeln + portable ZIP
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out, portable/SlimManager | Out-Null
+          $setup = Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
+          Copy-Item $setup.FullName out/SlimManager-Setup.exe
+          # Haupt-Programm (alles außer dem Kern) + Kern + Oberfläche
+          $main = Get-ChildItem src-tauri/target/release/*.exe | Where-Object { $_.Name -notlike 'slimmanager-core*' } | Select-Object -First 1
+          Copy-Item $main.FullName portable/SlimManager/SlimManager.exe
+          Copy-Item src-tauri/binaries/slimmanager-core-x86_64-pc-windows-msvc.exe portable/SlimManager/slimmanager-core.exe
+          Copy-Item -Recurse dist portable/SlimManager/web
+          Compress-Archive -Path portable/SlimManager -DestinationPath out/SlimManager-Windows-portable.zip
+          Get-ChildItem out | Format-Table Name, Length
       - uses: actions/upload-artifact@v4
         with:
           name: SlimManager-Windows
-          path: |
-            release/*.exe
-            release/*.zip
+          path: out/*
           if-no-files-found: error
 
   mac:
-    runs-on: macos-latest
-    env:
-      HAS_APPLE: ${{ secrets.APPLE_ID != '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: macos-latest, triple: aarch64-apple-darwin, file: SlimManager-Mac.dmg }
+          - { runner: macos-15-intel, triple: x86_64-apple-darwin, file: SlimManager-Mac-Intel.dmg }
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with: { workspaces: src-tauri }
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      - run: npm run build
-
-      - name: Signiert + notarisiert (wenn Apple-Zugang hinterlegt)
-        if: env.HAS_APPLE == 'true'
+      - name: Kern-Programm bauen
+        run: TRIPLE=${{ matrix.triple }} bash scripts/build-core.sh
+      - name: Rauchtest
+        run: node test/smoke.cjs src-tauri/binaries/slimmanager-core-${{ matrix.triple }}
+      - name: App + DMG
         env:
-          CSC_LINK: ${{ secrets.MAC_CERT_P12_BASE64 }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          npx electron-builder --mac dmg --arm64 --x64 -c.mac.notarize=true --publish never
-          mv release/SlimManager-Mac-arm64.dmg release/SlimManager-Mac.dmg
-          mv release/SlimManager-Mac-x64.dmg release/SlimManager-Mac-Intel.dmg
-
-      - name: Unsigniert (ohne Apple-Zugang)
-        if: env.HAS_APPLE != 'true'
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-        run: |
-          npx electron-builder --mac dir --arm64 --x64 -c.mac.identity=null --publish never
-          codesign --force --deep --sign - release/mac-arm64/SlimManager.app
-          codesign --force --deep --sign - release/mac/SlimManager.app
-          npx electron-builder --mac dmg --arm64 -c.mac.identity=null --prepackaged release/mac-arm64/SlimManager.app --publish never
-          npx electron-builder --mac dmg --x64 -c.mac.identity=null --prepackaged release/mac/SlimManager.app --publish never
-          mv release/SlimManager-Mac-arm64.dmg release/SlimManager-Mac.dmg
-          mv release/SlimManager-Mac-x64.dmg release/SlimManager-Mac-Intel.dmg
-
+          npx tauri build --bundles app,dmg
+          mkdir -p out
+          cp src-tauri/target/release/bundle/dmg/*.dmg out/${{ matrix.file }}
+          ls -la out
       - uses: actions/upload-artifact@v4
         with:
-          name: SlimManager-Mac
-          path: release/*.dmg
+          name: SlimManager-${{ matrix.triple }}
+          path: out/*.dmg
           if-no-files-found: error
 
   # Veröffentlicht die Dateien als Version "v<version aus package.json>".
   # Gleiche Version erneut hochgeladen -> Dateien werden ersetzt.
   release:
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     needs: [windows, mac]
     runs-on: ubuntu-latest
     permissions:
@@ -108,7 +122,7 @@ jobs:
           target_commitish: ${{ github.sha }}
           make_latest: true
           body: |
-            **Windows:** SlimManager-Setup.exe herunterladen und doppelklicken.
+            **Windows 10/11:** SlimManager-Setup.exe herunterladen und doppelklicken.
             **Mac (Apple-Chip M1–M4):** SlimManager-Mac.dmg öffnen und die App auf „Programme“ ziehen.
             **Älterer Mac mit Intel-Prozessor:** SlimManager-Mac-Intel.dmg
             **Ohne Installation (Windows):** SlimManager-Windows-portable.zip entpacken und SlimManager.exe starten.

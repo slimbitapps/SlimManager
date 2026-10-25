@@ -8,7 +8,7 @@
  *
  *   npm run test:e2e [screenshot-ordner]
  *   E2E_LANG=en npm run test:e2e   (englische Screenshots)
- *   SLIMMANAGER_CORE=src-tauri/binaries/slimmanager-core-aarch64-apple-darwin node test/e2e/run.cjs   (fertigen Kern testen)
+ *   SLIMMANAGER_CORE=src-tauri/binaries/slimmanager-core-<plattform> node test/e2e/run.cjs   (fertigen Kern testen)
  */
 const path = require('node:path');
 const fs = require('node:fs');
