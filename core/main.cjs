@@ -234,7 +234,7 @@ const tx = (k, p = {}) => {
 
 /** Taskleisten-Menü (Texte + Häkchen) an die Hülle melden */
 function updateTray() {
-  shell({ t: 'tray', labels: { open: tx('open'), boost: boost.active ? tx('boostOff') : tx('boostOn'), overlay: tx('overlay'), quit: tx('quit') }, overlay: settings.data.overlay.enabled });
+  shell({ t: 'tray', labels: { open: tx('open'), boost: boost.active ? tx('boostOff') : tx('boostOn'), overlay: tx('overlay'), quit: tx('quit') }, overlay: settings.data.overlay.enabled, closeToTray: !!settings.data.app.closeToTray });
 }
 function notify(title, body, action, arg) {
   if (isTest) return;
@@ -627,6 +627,7 @@ const RPC = {
     if (partial && partial.prefs) updateTray();
     if (partial && partial.app) {
       updateLive();
+      updateTray();
       if (partial.app.autostart !== undefined) shell({ t: 'autostart', on: settings.data.app.autostart });
     }
     if (partial && partial.alerts) updateProcWanted();

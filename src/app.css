@@ -1708,3 +1708,13 @@
   font-variant-numeric: tabular-nums;
   margin-right: 2px;
 }
+
+/* ---------------------------------------------------------------- Tauri-Version */
+/* Windows: normale Titelleiste von Windows – kein Platz für eigene Fensterknöpfe nötig */
+.tauri.platform-win32 .view-head,
+.tauri.platform-linux .view-head {
+  padding-right: 18px;
+}
+.tauri.platform-win32 .sidebar {
+  padding-top: 14px;
+}

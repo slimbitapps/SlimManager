@@ -59,7 +59,7 @@ function Sidebar() {
     ['phone', t('nav.phone'), <IconPhone size={19} key="h" />, phones ? <span className="nav-count on">{phones}</span> : null],
   ];
   return (
-    <nav className="sidebar">
+    <nav className="sidebar" data-tauri-drag-region>
       <div className="side-brand">
         <Logo size={26} />
         <span>SlimManager</span>

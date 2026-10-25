@@ -134,7 +134,8 @@ function GeneralTab() {
       </Group>
       <Group label={t('set.perf')}>
         <SelfUsage />
-        <Row label={t('set.gpu')} desc={t('set.gpu.desc')}>
+        {/* Tauri nutzt die Fenster-Technik des Systems – dort gibt es diesen Schalter nicht */}
+        {!document.documentElement.classList.contains('tauri') && <Row label={t('set.gpu')} desc={t('set.gpu.desc')}>
           <Switch
             on={gpu}
             onChange={async (v) => {
@@ -143,7 +144,7 @@ function GeneralTab() {
             }}
             testId="gpu-switch"
           />
-        </Row>
+        </Row>}
         {restart && (
           <Row label={t('set.restart')}>
             <button className="btn primary sm" onClick={() => window.api.relaunch()}>
@@ -361,7 +362,7 @@ function AboutTab() {
       <div className="row small faint" style={{ justifyContent: 'space-between' }}>
         <span>{t('about.copyright', { year: new Date().getFullYear() })}</span>
         <span>
-          Electron {info?.electron} · {info?.platform}
+          {info?.electron ? `Electron ${info.electron}` : 'Tauri'} · {info?.platform}
         </span>
       </div>
     </>

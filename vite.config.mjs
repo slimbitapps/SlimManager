@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 // App-Fenster: strenge Regeln. Die Handy-Seite (remote.html) bekommt ihre Regeln vom Server.
 const CSP =
   "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-  "img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'";
+  "img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost ws://127.0.0.1:*";
 
 export default defineConfig({
   base: './',

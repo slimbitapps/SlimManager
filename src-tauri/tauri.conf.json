@@ -1,0 +1,35 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "SlimManager",
+  "version": "1.0.0",
+  "identifier": "app.slimbit.slimmanager",
+  "build": {
+    "frontendDist": "../dist",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "macOSPrivateApi": true,
+    "windows": [],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost ws://127.0.0.1:*"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg", "nsis"],
+    "category": "Utility",
+    "shortDescription": "Moderner Task-Manager für Gamer – auch aufs Handy",
+    "copyright": "© SlimBit Apps",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "resources": { "../dist/": "web/" },
+    "externalBin": ["binaries/slimmanager-core"],
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "dmg": { "windowSize": { "width": 660, "height": 420 } }
+    },
+    "windows": {
+      "nsis": { "installMode": "currentUser", "languages": ["German", "English"], "displayLanguageSelector": false }
+    }
+  }
+}

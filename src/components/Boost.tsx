@@ -49,7 +49,7 @@ export function BoostView() {
 
   return (
     <div className="view boost-view" data-testid="boost">
-      <header className="view-head">
+      <header className="view-head" data-tauri-drag-region>
         <h1>{t('nav.boost')}</h1>
       </header>
       <div className="boost-scroll">

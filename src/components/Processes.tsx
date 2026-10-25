@@ -93,7 +93,7 @@ export function Processes() {
 
   return (
     <div className="view procs-view" data-testid="processes">
-      <header className="view-head">
+      <header className="view-head" data-tauri-drag-region>
         <h1>{t('nav.processes')}</h1>
         <div className="search">
           <IconSearch size={16} />

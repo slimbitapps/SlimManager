@@ -27,7 +27,7 @@ export function PhoneView() {
 
   return (
     <div className="view phone-view" data-testid="phone">
-      <header className="view-head">
+      <header className="view-head" data-tauri-drag-region>
         <h1>{t('nav.phone')}</h1>
         <div className="spacer" />
         <button className="btn ghost sm" onClick={() => openDialog({ kind: 'hotspot' })} data-testid="open-hotspot">

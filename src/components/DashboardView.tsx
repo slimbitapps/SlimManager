@@ -107,7 +107,7 @@ export function DashboardView() {
           </button>
         </div>
       )}
-      {!fullscreen && <header className="view-head">
+      {!fullscreen && <header className="view-head" data-tauri-drag-region>
         <h1>{editing ? t('dash.editTitle') : t('nav.dashboard')}</h1>
         {editing && (
           <Seg<Target>
