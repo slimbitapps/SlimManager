@@ -88,9 +88,7 @@ function Head({ title, sub }: { title: TKey; sub: TKey }) {
 function GeneralTab() {
   const p = useStore((s) => s.settings.prefs);
   const tray = useStore((s) => s.settings.app.closeToTray);
-  const gpu = useStore((s) => s.settings.app.gpu);
   const autostart = useStore((s) => s.settings.app.autostart);
-  const [restart, setRestart] = useState(false);
   return (
     <>
       <Head title="settings.general" sub="settings.general.sub" />
@@ -134,24 +132,6 @@ function GeneralTab() {
       </Group>
       <Group label={t('set.perf')}>
         <SelfUsage />
-        {/* Tauri nutzt die Fenster-Technik des Systems – dort gibt es diesen Schalter nicht */}
-        {!document.documentElement.classList.contains('tauri') && <Row label={t('set.gpu')} desc={t('set.gpu.desc')}>
-          <Switch
-            on={gpu}
-            onChange={async (v) => {
-              await updateSettings({ app: { gpu: v } });
-              setRestart(true);
-            }}
-            testId="gpu-switch"
-          />
-        </Row>}
-        {restart && (
-          <Row label={t('set.restart')}>
-            <button className="btn primary sm" onClick={() => window.api.relaunch()}>
-              {t('set.restart.btn')}
-            </button>
-          </Row>
-        )}
       </Group>
       <button className="btn ghost sm" onClick={showIntroAgain}>
         {t('settings.intro')}
@@ -362,7 +342,7 @@ function AboutTab() {
       <div className="row small faint" style={{ justifyContent: 'space-between' }}>
         <span>{t('about.copyright', { year: new Date().getFullYear() })}</span>
         <span>
-          {info?.electron ? `Electron ${info.electron}` : 'Tauri'} · {info?.platform}
+          Tauri · {info?.platform}
         </span>
       </div>
     </>

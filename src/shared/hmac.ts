@@ -97,7 +97,7 @@ export function hmacHex(key: string, msg: string): string {
   return toHex(sha256(outer));
 }
 
-/** Gleiche Nachrichten-Formate wie electron/core/auth.cjs */
+/** Gleiche Nachrichten-Formate wie core/lib/auth.cjs */
 export const pairMsg = (nonce: string, id: string) => `pair|${nonce}|${id}`;
 export const keyMsg = (nonce: string, id: string) => `key|${nonce}|${id}`;
 export const authMsg = (nonce: string) => `auth|${nonce}`;

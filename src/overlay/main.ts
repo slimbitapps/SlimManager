@@ -53,8 +53,8 @@ function render() {
   }
 }
 
-(window.api ? Promise.resolve(window.api) : createApi('overlay')).then((api) => {
-  if (window.api !== api) window.api = api;
+createApi('overlay').then((api) => {
+  window.api = api;
   // Ecke geändert → neu positionieren
   (window as any).__setCorner = (c: string) => {
     (window as any).__corner = c;

@@ -19,20 +19,20 @@ const { execFile } = require('node:child_process');
 const { WebSocketServer } = require('ws');
 const QRCode = require('qrcode');
 // Feste Pfade (damit alles in EIN Programm gepackt werden kann)
-const { SettingsStore } = require('../electron/core/settings.cjs');
-const { Pairing } = require('../electron/core/auth.cjs');
-const { RemoteServer } = require('../electron/core/server.cjs');
-const { listAddresses, pickAddress } = require('../electron/core/network.cjs');
-const { Monitor } = require('../electron/core/monitor.cjs');
-const { normalize, group, isProtected, setPriority, killPids, LEVELS } = require('../electron/core/procs.cjs');
-const { Boost, detectGame } = require('../electron/core/boost.cjs');
-const { Tweaks } = require('../electron/core/tweaks.cjs');
-const { cleanLayout, cleanLook } = require('../electron/core/layout.cjs');
+const { SettingsStore } = require('./lib/settings.cjs');
+const { Pairing } = require('./lib/auth.cjs');
+const { RemoteServer } = require('./lib/server.cjs');
+const { listAddresses, pickAddress } = require('./lib/network.cjs');
+const { Monitor } = require('./lib/monitor.cjs');
+const { normalize, group, isProtected, setPriority, killPids, LEVELS } = require('./lib/procs.cjs');
+const { Boost, detectGame } = require('./lib/boost.cjs');
+const { Tweaks } = require('./lib/tweaks.cjs');
+const { cleanLayout, cleanLook } = require('./lib/layout.cjs');
 const { appIcon } = require('./icons.cjs');
 
 // Wächter-Modus: dieselbe Datei/Programm, nur mit anderer Aufgabe (siehe tweaks.cjs)
 if (process.argv.includes('--watchdog')) {
-  require('../electron/core/watchdog.cjs');
+  require('./lib/watchdog.cjs');
   return;
 }
 
@@ -141,7 +141,8 @@ function startRpc() {
       // Nur mit Token und nur von diesem PC
       const ip = String(req.socket.remoteAddress || '');
       if (url.searchParams.get('token') !== TOKEN || !/^(127\.0\.0\.1|::1|::ffff:127\.0\.0\.1)$/.test(ip)) return ws.close(4003);
-      const c = { ws, role: url.searchParams.get('role') === 'overlay' ? 'overlay' : 'main', watch: { fast: 0, medium: 0 } };
+      const r = url.searchParams.get('role');
+      const c = { ws, role: r === 'overlay' || (r === 'test' && isTest) ? r : 'main', watch: { fast: 0, medium: 0 } };
       uis.add(c);
       ws.on('message', async (d) => {
         let m;

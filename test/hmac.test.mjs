@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { hmacHex, sha256, cmdMsg } from '../src/shared/hmac.ts';
-import auth from '../electron/core/auth.cjs';
+import auth from '../core/lib/auth.cjs';
 
 test('SHA-256 bekannte Werte', () => {
   const hex = (b) => Buffer.from(b).toString('hex');

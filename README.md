@@ -86,27 +86,32 @@ Warnungen, Taskleisten-Symbol, Deutsch/Englisch, hell/dunkel, Einfach/Profi.
 
 ## Für Entwickler
 
-Technik: Electron (Fenster, Server, Prozesse), React + TypeScript (PC-Fenster **und** Handy-Seite – gleiche Widgets), Vite,
-[systeminformation](https://github.com/sebhildebrandt/systeminformation) für die Messwerte.
+Technik: [Tauri 2](https://tauri.app) (schlanke Rust-Hülle: Fenster, Taskleiste, Tastenkürzel – nutzt das im System eingebaute WebView),
+ein eigener Kern in Node.js (Messwerte, Prozesse, Boost, Handy-Server – als einzelne Programmdatei mitgeliefert),
+React + TypeScript (PC-Fenster **und** Handy-Seite – gleiche Widgets), Vite.
+Oberfläche und Kern sprechen über einen WebSocket nur auf `127.0.0.1` mit geheimem Token.
 
 ```bash
 npm install
-npm start            # App bauen und starten
+WITH_RUST=1 bash scripts/setup-tools.sh   # einmalig: Rust für Tauri (kostenlos, ohne Konto)
+npm start            # App bauen und starten (Tauri-Entwicklermodus)
 npm test             # Logik- und Sicherheitstests
-npm run test:e2e     # echte App automatisch durchklicken (inkl. Handy-Fenster, Screenshots)
-npm run test:perf    # eigenen Verbrauch messen (CPU/GPU von SlimManager selbst)
+npm run test:e2e     # echten Kern + Oberfläche automatisch durchklicken (inkl. Handy-Fenster, Screenshots)
 npm run icons        # Logo und Symbole neu erzeugen
-bash scripts/test-build.sh   # Testversion: Mac-DMG + Windows-ZIP
+npm run dist         # fertige App bauen (Kern-Programm + Tauri-Installer)
+bash scripts/test-build.sh   # Testversion: Mac-DMG (Windows baut GitHub Actions)
 ```
 
 Aufbau:
-- `electron/core/` – Logik ohne Oberfläche: Messwerte (`monitor.cjs`), Prozesse & Prioritäten (`procs.cjs`), Boost (`boost.cjs`),
+- `core/lib/` – Logik ohne Oberfläche: Messwerte (`monitor.cjs`), Prozesse & Prioritäten (`procs.cjs`), Boost (`boost.cjs`),
   Systemeingriffe mit Rückweg (`tweaks.cjs`, Wächter `watchdog.cjs`),
   Server (`server.cjs`), Kopplung (`auth.cjs`), Netzwerk, Einstellungen, Layout-Prüfung (`layout.cjs`)
-- `electron/main.cjs` – Fenster, Mini-Anzeige, Taskleiste, Tastenkürzel, Verbindung zur Oberfläche
+- `core/main.cjs` – der Kern: verbindet alles, RPC für die Oberfläche (`scripts/build-core.sh` macht daraus ein Programm)
+- `src-tauri/` – Tauri-Hülle (Rust): Fenster, Mini-Anzeige, Taskleiste, Tastenkürzel, startet/beendet den Kern
+- `src/api.ts` – Verbindung Oberfläche ↔ Kern
 - `src/shared/` – Widgets, Dashboard, Skins (`dashboard.css`) – von PC-Fenster und Handy gemeinsam genutzt
 - `src/components/` – PC-Fenster (React), Texte in `src/locales/`
 - `src/remote/` – Handy-Seite · `src/overlay/` – Mini-Anzeige
-- `test/` – automatische Tests · `brand/` – Logo · `website/` – Download-Seite
+- `test/` – automatische Tests (Electron dient dort nur als Test-Browser, nicht Teil der App) · `brand/` – Logo · `website/` – Download-Seite
 
 Installer werden per GitHub Actions gebaut (`.github/workflows/build.yml`) – nur bei Code-Änderungen.

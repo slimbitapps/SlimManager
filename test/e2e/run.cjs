@@ -1,6 +1,6 @@
 'use strict';
 /**
- * End-to-End-Test: startet die echte App (Electron) und spielt alles durch –
+ * End-to-End-Test: startet den echten Kern + die echte Oberfläche (in einem Electron-Testfenster, wie die Tauri-App) und spielt alles durch –
  * Einführung, Dashboard + Editor + Skins, Mini-Anzeige, Prozesse (Priorität, Beenden),
  * Boost (Gaming: Einfrieren + Ausnahmen + Wirkung, Fokus-Modus), Vollbild, Handy koppeln (QR + PIN + falsche PIN + Zustimmung), Steuern vom Handy, Einstellungen.
  * Die Handy-Seite läuft dabei in handygroßen Fenstern. Für die Prozesse werden harmlose
@@ -8,7 +8,7 @@
  *
  *   npm run test:e2e [screenshot-ordner]
  *   E2E_LANG=en npm run test:e2e   (englische Screenshots)
- *   SLIMMANAGER_EXE=release/mac/SlimManager.app/Contents/MacOS/SlimManager node test/e2e/run.cjs   (fertige App testen)
+ *   SLIMMANAGER_CORE=src-tauri/binaries/slimmanager-core-aarch64-apple-darwin node test/e2e/run.cjs   (fertigen Kern testen)
  */
 const path = require('node:path');
 const fs = require('node:fs');
@@ -68,13 +68,68 @@ setTimeout(() => {
   process.exit(2);
 }, 8 * 60_000).unref();
 
+/** Den echten Kern starten (wie die Tauri-Hülle es tut) und seine Meldungen an die Hülle mitlesen */
+function startCore(userData, lang) {
+  const { spawn: sp } = require('node:child_process');
+  const exe = process.env.SLIMMANAGER_CORE; // fertiges Kern-Programm testen (sonst node core/main.cjs)
+  const p = sp(exe || process.execPath, exe ? [] : [path.join(ROOT, 'core', 'main.cjs')], {
+    env: { ...process.env, SLIMMANAGER_TEST: '1', SM_USERDATA: userData, SM_PORT: '0', SM_DIST: path.join(ROOT, 'dist'), LANG: lang === 'de' ? 'de_DE.UTF-8' : 'en_US.UTF-8' },
+    stdio: ['pipe', 'pipe', 'inherit'],
+  });
+  const msgs = [];
+  let buf = '';
+  p.stdout.on('data', (d) => {
+    buf += d;
+    let i;
+    while ((i = buf.indexOf('\n')) >= 0) {
+      try {
+        msgs.push(JSON.parse(buf.slice(0, i)));
+      } catch {
+        /* keine JSON-Zeile */
+      }
+      buf = buf.slice(i + 1);
+    }
+  });
+  return { p, msgs };
+}
+
+/** Kleiner RPC-Client, um den Zustand des Kerns abzufragen (nur im Testmodus erlaubt) */
+function coreClient(port, token) {
+  const WebSocket = require('ws');
+  const ws = new WebSocket(`ws://127.0.0.1:${port}/?token=${token}&role=test`);
+  let id = 0;
+  const pending = new Map();
+  ws.on('message', (d) => {
+    const m = JSON.parse(String(d));
+    if (m.id !== undefined) pending.get(m.id)?.(m.r);
+  });
+  const open = new Promise((r) => ws.on('open', r));
+  return {
+    open,
+    ws,
+    call: (m, ...a) =>
+      new Promise((r) => {
+        const i = ++id;
+        pending.set(i, r);
+        ws.send(JSON.stringify({ id: i, m, a }));
+      }),
+  };
+}
+
 (async () => {
   const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'slimmanager-e2e-'));
   const lang = process.env.E2E_LANG || 'de';
+  const core = startCore(userData, lang);
+  await waitFor(() => core.msgs.some((m) => m.t === 'ready'), 15000, 'Kern bereit');
+  const ready = core.msgs.find((m) => m.t === 'ready');
+  const cc = coreClient(ready.port, ready.token);
+  await cc.open;
+  const st = () => cc.call('test:state');
+  const page = (file, extra = '') => `file://${path.join(ROOT, 'dist', file)}?port=${ready.port}&token=${encodeURIComponent(ready.token)}${extra}`;
   const app = await electron.launch({
-    executablePath: process.env.SLIMMANAGER_EXE || require('electron'),
-    args: process.env.SLIMMANAGER_EXE ? ['--no-sandbox', `--lang=${lang}`] : [ROOT, '--no-sandbox', `--lang=${lang}`],
-    env: { ...process.env, SLIMMANAGER_TEST: '1', SLIMMANAGER_USERDATA: userData, SLIMMANAGER_PORT: '0', LANG: lang === 'de' ? 'de_DE.UTF-8' : 'en_US.UTF-8' },
+    executablePath: require('electron'),
+    args: [path.join(__dirname, 'harness.cjs'), '--no-sandbox', `--lang=${lang}`],
+    env: { ...process.env, SM_E2E_URL: page('index.html') },
   });
   const win = await app.firstWindow();
   const errors = [];
@@ -88,7 +143,6 @@ setTimeout(() => {
     await sleep(ms);
     await page.screenshot({ path: path.join(SHOTS, name + '.png') });
   };
-  const sm = (fn, arg) => app.evaluate(fn, arg);
 
   try {
     // ---------------------------------------------------------------- Einführung
@@ -140,9 +194,12 @@ setTimeout(() => {
     await win.click('[data-testid="w-style-chart"]');
     await win.click('[data-testid="w-size-w"]');
     await win.fill('[data-testid="w-title"]', 'Internet');
-    await sleep(300);
-    const saved = JSON.parse(fs.readFileSync(path.join(userData, 'settings.json'), 'utf8')).layout.pc;
-    const added = saved[saved.length - 1];
+    const lastWidget = () => {
+      const l = JSON.parse(fs.readFileSync(path.join(userData, 'settings.json'), 'utf8')).layout.pc;
+      return l[l.length - 1];
+    };
+    await waitFor(() => lastWidget().title === 'Internet' && lastWidget().size === 'w', 5000, 'Widget gespeichert');
+    const added = lastWidget();
     assert.equal(added.metric, 'netDown');
     assert.equal(added.style, 'chart');
     assert.equal(added.size, 'w');
@@ -199,12 +256,19 @@ setTimeout(() => {
 
     // ---------------------------------------------------------------- Mini-Anzeige
     await win.click('[data-testid="overlay-toggle"]');
-    await waitFor(() => sm(() => global.__slimmanager.overlay()), 4000, 'Mini-Anzeige an');
+    await waitFor(async () => (await st()).overlay, 4000, 'Mini-Anzeige an');
+    // Die Hülle bekommt den Auftrag, das Fenster zu öffnen – hier öffnen wir die Seite selbst
+    assert.ok(core.msgs.some((m) => m.t === 'overlay' && m.on), 'Hülle soll Mini-Anzeige öffnen');
+    await app.evaluate(({ BrowserWindow }, url) => {
+      const b = new BrowserWindow({ width: 420, height: 60, title: 'overlay', show: true, transparent: true, frame: false });
+      b.loadURL(url);
+    }, page('overlay.html', '&corner=tr'));
     const ov = await app.waitForEvent('window', (p) => p.url().includes('overlay.html'));
-    await ov.waitForFunction(() => document.querySelectorAll('#ov span').length >= 3, null, { timeout: 6000 });
+    await ov.waitForFunction(() => document.querySelectorAll('#ov span').length >= 3, null, { timeout: 8000 });
     await ov.screenshot({ path: path.join(SHOTS, '25-overlay.png') });
+    await ov.close();
     await win.click('[data-testid="overlay-toggle"]');
-    await waitFor(async () => !(await sm(() => global.__slimmanager.overlay())), 4000, 'Mini-Anzeige aus');
+    await waitFor(async () => !(await st()).overlay, 4000, 'Mini-Anzeige aus');
 
     // ---------------------------------------------------------------- Prozesse
     const d1 = dummy('SlimTestDummy');
@@ -272,7 +336,7 @@ setTimeout(() => {
     await shot(win, '31-boost-active');
     await win.click('[data-testid="boost-stop"]');
     if (process.platform !== 'win32') await waitFor(() => !stopped(d3), 5000, 'Helfer aufgetaut');
-    assert.equal((await sm(() => global.__slimmanager.boost())).active, false);
+    assert.equal(((await st()).boost).active, false);
 
     // ---------------------------------------------------------------- Fokus-Modus
     await win.click('[data-testid="mode-focus"]');
@@ -281,7 +345,7 @@ setTimeout(() => {
     await shot(win, '32-focus');
     await win.click('[data-testid="boost-start"]');
     await win.waitForSelector('[data-testid="boost-status"]');
-    assert.equal((await sm(() => global.__slimmanager.boost())).mode, 'focus');
+    assert.equal(((await st()).boost).mode, 'focus');
     if (process.platform !== 'win32') await waitFor(() => stopped(d3), 5000, 'Fokus: Helfer eingefroren');
     await sleep(1500);
     await shot(win, '33-focus-active');
@@ -320,7 +384,7 @@ setTimeout(() => {
       p.on('dialog', (d) => d.accept());
       return p;
     }
-    const url1 = await sm(() => global.__slimmanager.url());
+    const url1 = (await st()).url;
     assert.match(url1, /^http:\/\/127\.0\.0\.1:\d+\/#p=[\w-]{20,}$/);
     const phone = await openPhone(url1);
     await phone.waitForSelector('[data-testid="r-dashboard"]', { timeout: 10000 });
@@ -370,11 +434,11 @@ setTimeout(() => {
     await phone.waitForSelector('[data-testid="r-boost"]');
     await phone.selectOption('.r-select', 'SlimTestGame');
     await phone.click('[data-testid="r-boost-start"]');
-    await waitFor(async () => (await sm(() => global.__slimmanager.boost())).active, 6000, 'Boost vom Handy');
+    await waitFor(async () => ((await st()).boost).active, 6000, 'Boost vom Handy');
     await phone.waitForSelector('[data-testid="r-boost-stop"]');
     await shot(phone, '53-phone-boost');
     await phone.click('[data-testid="r-boost-stop"]');
-    await waitFor(async () => !(await sm(() => global.__slimmanager.boost())).active, 6000, 'Boost vom Handy beendet');
+    await waitFor(async () => !((await st()).boost).active, 6000, 'Boost vom Handy beendet');
 
     // Tablet quer (Zweitbildschirm)
     await phone.click('[data-testid="r-tab-dash"]');
@@ -383,13 +447,13 @@ setTimeout(() => {
     await shot(phone, '54-tablet-dashboard');
 
     // ---------------------------------------------------------------- Zweites Gerät per PIN (mit Zustimmung am PC)
-    const base = await sm(() => global.__slimmanager.base());
+    const base = (await st()).base;
     const phone2 = await openPhone(base + '/');
     await phone2.waitForSelector('[data-testid="r-pin"]');
     await phone2.fill('[data-testid="r-pin"]', '000000');
     await phone2.click('[data-testid="r-pin-go"]');
     await phone2.waitForSelector('.r-err', { timeout: 6000 }); // falsche PIN
-    const pin = await sm(() => global.__slimmanager.pin());
+    const pin = (await st()).pin;
     await shot(phone2, '55-phone-pin');
     await phone2.fill('[data-testid="r-pin"]', pin);
     await phone2.click('[data-testid="r-pin-go"]');
@@ -397,7 +461,7 @@ setTimeout(() => {
     await shot(win, '42-approval');
     await win.click('[data-testid="approval-allow"]');
     await phone2.waitForSelector('[data-testid="r-dashboard"]', { timeout: 8000 });
-    await waitFor(async () => (await sm(() => global.__slimmanager.clients())).length === 2, 4000, 'zwei Geräte');
+    await waitFor(async () => ((await st()).clients).length === 2, 4000, 'zwei Geräte');
 
     // Steuern ausschalten → Handy darf nur noch ansehen
     await win.click('[data-testid="allow-control"]');
@@ -426,6 +490,9 @@ setTimeout(() => {
   } finally {
     for (const p of dummies) if (alive(p)) p.kill();
     await app.close().catch(() => {});
+    cc.ws.close();
+    core.p.stdin.end(); // Hülle weg → Kern räumt auf und beendet sich
+    await new Promise((r) => (core.p.exitCode !== null ? r() : core.p.on('exit', r)));
     fs.rmSync(dummyDir, { recursive: true, force: true });
   }
 })();

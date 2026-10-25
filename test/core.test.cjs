@@ -5,11 +5,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { SettingsStore, DEFAULTS } = require('../electron/core/settings.cjs');
-const { cleanLayout, cleanLook, cleanOverlay } = require('../electron/core/layout.cjs');
-const procs = require('../electron/core/procs.cjs');
-const { Boost, planBoost, detectGame } = require('../electron/core/boost.cjs');
-const { Ring, rate, parseIoreg, parseSmi, cleanDisks, Monitor } = require('../electron/core/monitor.cjs');
+const { SettingsStore, DEFAULTS } = require('../core/lib/settings.cjs');
+const { cleanLayout, cleanLook, cleanOverlay } = require('../core/lib/layout.cjs');
+const procs = require('../core/lib/procs.cjs');
+const { Boost, planBoost, detectGame } = require('../core/lib/boost.cjs');
+const { Ring, rate, parseIoreg, parseSmi, cleanDisks, Monitor } = require('../core/lib/monitor.cjs');
 
 const tmp = () => path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'slimmanager-')), 'settings.json');
 
@@ -214,7 +214,7 @@ function fakeTweaks() {
 }
 
 test('Ausnahmen erkennen auch andere Schreibweisen', () => {
-  const { matches } = require('../electron/core/boost.cjs');
+  const { matches } = require('../core/lib/boost.cjs');
   const p = (app, name) => ({ app, name });
   assert.ok(matches('Logitech G HUB', p('lghub', 'lghub.exe')));
   assert.ok(matches('Corsair iCUE', p('iCUE', 'iCUE.exe')));
@@ -350,7 +350,7 @@ test('Boost: neue Prozesse des Spiels und neue Hintergrund-Programme werden nach
 
 // ------------------------------------------------------------------ Tweaks
 test('Energieplan-Werte lesen (sprachunabhängig) und Kern-Maske', () => {
-  const { parsePowerQuery, backgroundMask } = require('../electron/core/tweaks.cjs');
+  const { parsePowerQuery, backgroundMask } = require('../core/lib/tweaks.cjs');
   const out = `GUID des Energieschemas: 381b4222-f694-41f0-9685-ff5bb260df2e  (Ausbalanciert)
     GUID der Untergruppe: 54533251-82be-4824-96c1-47b60b740d00  (Prozessorenergieverwaltung)
       GUID der Energieeinstellung: bc5038f7-23e0-4960-96da-33abaf5935ec  (Maximaler Leistungszustand des Prozessors)
@@ -368,7 +368,7 @@ test('Energieplan-Werte lesen (sprachunabhängig) und Kern-Maske', () => {
 });
 
 test('Windows-Energieplan: Höchstleistung + Rückweg werden notiert', async () => {
-  const { Tweaks, HIGH_PERF } = require('../electron/core/tweaks.cjs');
+  const { Tweaks, HIGH_PERF } = require('../core/lib/tweaks.cjs');
   const calls = [];
   const exec = (cmd, args, _o, cb) => {
     calls.push(args.join(' '));
@@ -389,7 +389,7 @@ test('Windows-Energieplan: Höchstleistung + Rückweg werden notiert', async () 
 });
 
 test('Admin-Helfer-Skript: startet nur angehaltene Dienste neu und wartet auf SlimManager', () => {
-  const { servicesScript, SERVICES } = require('../electron/core/tweaks.cjs');
+  const { servicesScript, SERVICES } = require('../core/lib/tweaks.cjs');
   const sc = servicesScript(1234, "C:\\Temp\\it's.flag");
   assert.match(sc, /\$parent = 1234/);
   assert.match(sc, /it''s\.flag/, 'Anführungszeichen maskiert');
@@ -400,7 +400,7 @@ test('Admin-Helfer-Skript: startet nur angehaltene Dienste neu und wartet auf Sl
 
 test('Mac: Einfrieren echt – und der Wächter taut nach einem "Absturz" auf', { skip: process.platform === 'win32' }, async () => {
   const { spawn, execFileSync } = require('node:child_process');
-  const { Tweaks } = require('../electron/core/tweaks.cjs');
+  const { Tweaks } = require('../core/lib/tweaks.cjs');
   const child = spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)'], { stdio: 'ignore' });
   await new Promise((r) => setTimeout(r, 200));
   const state = () => execFileSync('ps', ['-o', 'stat=', '-p', String(child.pid)]).toString().trim();
@@ -492,7 +492,7 @@ test('Monitor mit Attrappe: Werte, Verlauf, fehlende Sensoren = null', async () 
 
 // ------------------------------------------------------------------ Windows-Messung (ohne echtes Windows: Ausgaben simuliert)
 test('Windows-Prozessliste: CPU aus Rechenzeit-Differenz, Pfade, System ohne Pfad', () => {
-  const { parseWinProcs } = require('../electron/core/winsampler.cjs');
+  const { parseWinProcs } = require('../core/lib/winsampler.cjs');
   const prev = new Map();
   const a = '4\tSystem\t1000\t1000\t8\t\n1200\tchrome\t5000\t104857600\t8\tC:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\n';
   const first = parseWinProcs(a, prev, 0, 8);
@@ -512,7 +512,7 @@ test('Windows-Prozessliste: CPU aus Rechenzeit-Differenz, Pfade, System ohne Pfa
 });
 
 test('Windows-GPU pro Prozess, netstat und nvidia-smi pmon lesen', () => {
-  const { parseWinGpu, parseNetstat, parsePmon } = require('../electron/core/winsampler.cjs');
+  const { parseWinGpu, parseNetstat, parsePmon } = require('../core/lib/winsampler.cjs');
   const g = parseWinGpu('GPU 57 2147483648 1200=40,999=17');
   assert.equal(g.util, 57);
   assert.equal(g.memUsed, 2147483648);
@@ -527,7 +527,7 @@ test('Windows-GPU pro Prozess, netstat und nvidia-smi pmon lesen', () => {
 });
 
 test('Windows-Helfer: Anfragen und Antworten passen zusammen (simulierte PowerShell)', async () => {
-  const { WinSampler } = require('../electron/core/winsampler.cjs');
+  const { WinSampler } = require('../core/lib/winsampler.cjs');
   const { EventEmitter } = require('node:events');
   const out = new EventEmitter();
   const fake = { exitCode: null, pid: 4242, stdout: out, on() {}, stdin: { write(line) {
@@ -586,7 +586,7 @@ test('Einstellungen Version 2: Zähl-Animation wird bei alten Einstellungen ausg
 });
 
 test('Mac-Messung: CPU aus os.cpus, vm_stat, netstat, ps', () => {
-  const { cpuLoad, parseVmStat, parseSwap, parseNetstatMac, parsePs } = require('../electron/core/macsampler.cjs');
+  const { cpuLoad, parseVmStat, parseSwap, parseNetstatMac, parsePs } = require('../core/lib/macsampler.cjs');
   const c = (u, i) => ({ times: { user: u, nice: 0, sys: 0, irq: 0, idle: i } });
   const l = cpuLoad([c(100, 900), c(0, 1000)], [c(600, 1400), c(0, 2000)]);
   assert.deepEqual(l.cores, [50, 0]);
@@ -608,7 +608,7 @@ utun0      1380  <Link#9>                           5     0        500        5 
 });
 
 test('Mac-Messung: Befehle laufen mit neutralem Zahlenformat (LC_ALL=C)', async () => {
-  const { MacSampler } = require('../electron/core/macsampler.cjs');
+  const { MacSampler } = require('../core/lib/macsampler.cjs');
   let env = null;
   const m = new MacSampler({ exec: (cmd, args, o, cb) => ((env = o.env), cb(null, '')), cpus: () => [] });
   await m.processes();

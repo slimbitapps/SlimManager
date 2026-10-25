@@ -1,6 +1,6 @@
 /**
  * Alle Widgets des Dashboards: welche es gibt, welche Messwerte, Standard-Layouts.
- * Die ID-Listen müssen mit electron/core/layout.cjs übereinstimmen (wird getestet).
+ * Die ID-Listen müssen mit core/lib/layout.cjs übereinstimmen (wird getestet).
  */
 import type { MetricId, Skin, Stats, Widget, WidgetType, WSize, WStyle, SysInfo } from './types';
 import { bits, bytes, pct, rate, temp } from './format';

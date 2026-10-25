@@ -6,11 +6,10 @@ import { App } from './App';
 import { init } from './store';
 import { createApi } from './api';
 
-// Erst mit dem Kern verbinden, dann die Oberfläche zeigen.
-// (In der Electron-Testumgebung gibt es die Brücke schon – dann wird sie benutzt.)
-(window.api ? Promise.resolve(window.api) : createApi('main'))
+// Erst mit dem Kern verbinden, dann die Oberfläche zeigen
+createApi('main')
   .then((api) => {
-    if (window.api !== api) window.api = api; // Electron-Brücke ist schreibgeschützt
+    window.api = api;
     return init();
   })
   .then(() => createRoot(document.getElementById('root')!).render(<App />))

@@ -41,17 +41,6 @@ function logoSvg({ padded = true } = {}) {
     : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">${inner}</svg>`;
 }
 
-function dmgBackground(scale) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${660 * scale}" height="${420 * scale}" viewBox="0 0 660 420">
-    <rect width="660" height="420" fill="#f7f7f9"/>
-    <text x="330" y="54" text-anchor="middle" font-family="-apple-system, Helvetica, Arial" font-weight="700" font-size="22" fill="#1c1c1f">SlimManager installieren · Install SlimManager</text>
-    <text x="330" y="84" text-anchor="middle" font-family="-apple-system, Helvetica, Arial" font-size="14" fill="#5f636b">Ziehe das Symbol auf „Programme“ · Drag the icon onto Applications</text>
-    <path d="M262 215h120" stroke="#8b5cf6" stroke-width="6" stroke-linecap="round"/>
-    <path d="M372 199l20 16-20 16" fill="none" stroke="#8b5cf6" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-    <text x="330" y="372" text-anchor="middle" font-family="-apple-system, Helvetica, Arial" font-size="12" fill="#8d9098">Danach SlimManager aus „Programme“ starten · Then open it from Applications</text>
-  </svg>`;
-}
-
 async function render(svg, w, h, out) {
   const win = new BrowserWindow({ width: w, height: h, show: false, transparent: true, frame: false, useContentSize: true, webPreferences: { offscreen: true } });
   const html = `<!doctype html><html><body style="margin:0;background:transparent;overflow:hidden">${svg.replace('<svg ', `<svg width="${w}" height="${h}" `)}</body></html>`;
@@ -72,12 +61,10 @@ app.whenReady().then(async () => {
   fs.mkdirSync(path.join(ROOT, 'brand'), { recursive: true });
   fs.writeFileSync(path.join(ROOT, 'brand', 'logo.svg'), logoSvg({ padded: false }));
   fs.writeFileSync(path.join(ROOT, 'brand', 'icon.svg'), logoSvg({ padded: true }));
-  await render(logoSvg(), 1024, 1024, path.join(ROOT, 'build', 'icon.png'));
+  await render(logoSvg(), 1024, 1024, path.join(ROOT, 'brand', 'icon-1024.png')); // Quelle für die App-Symbole (tauri icon)
   await render(logoSvg(), 256, 256, path.join(ROOT, 'website', 'icon.png'));
   await render(logoSvg(), 256, 256, path.join(ROOT, 'brand', 'slimmanager.png')); // für die Startseite
   await render(logoSvg(), 192, 192, path.join(ROOT, 'public', 'icon.png')); // Handy-Seite
   await render(logoSvg({ padded: false }), 512, 512, path.join(ROOT, 'brand', 'logo-square.png'));
-  await render(dmgBackground(1), 660, 420, path.join(ROOT, 'build', 'background.png'));
-  await render(dmgBackground(2), 1320, 840, path.join(ROOT, 'build', 'background@2x.png'));
   app.quit();
 });

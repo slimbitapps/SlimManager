@@ -7,8 +7,8 @@ const os = require('node:os');
 const path = require('node:path');
 const http = require('node:http');
 const WebSocket = require('ws');
-const { RemoteServer } = require('../electron/core/server.cjs');
-const { Pairing, hmac, pairMsg, keyMsg, authMsg, cmdMsg } = require('../electron/core/auth.cjs');
+const { RemoteServer } = require('../core/lib/server.cjs');
+const { Pairing, hmac, pairMsg, keyMsg, authMsg, cmdMsg } = require('../core/lib/auth.cjs');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'slimmanager-srv-'));
 fs.writeFileSync(path.join(root, 'remote.html'), '<!doctype html><title>remote</title>');
@@ -301,7 +301,7 @@ test('Prozessliste nur an Handys, die sie abonniert haben', async () => {
 });
 
 test('Fremde IP-Adressen (Internet) werden abgewiesen', () => {
-  const { isPrivateIp } = require('../electron/core/network.cjs');
+  const { isPrivateIp } = require('../core/lib/network.cjs');
   for (const ip of ['192.168.1.20', '10.0.0.5', '172.20.10.3', '172.31.255.1', '::ffff:192.168.0.2', '127.0.0.1', 'fe80::1']) assert.ok(isPrivateIp(ip), ip);
   for (const ip of ['8.8.8.8', '172.32.0.1', '193.99.144.80', '2a00:1450::1', '']) assert.ok(!isPrivateIp(ip), ip);
 });
