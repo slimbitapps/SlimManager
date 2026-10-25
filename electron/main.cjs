@@ -43,7 +43,9 @@ process.on('uncaughtException', (e) => log('uncaughtException', e));
 process.on('unhandledRejection', (e) => log('unhandledRejection', e));
 
 // Nur eine SlimManager-Instanz (sonst streiten sich zwei Server um den Port)
-if (!isTest && !app.requestSingleInstanceLock()) app.quit();
+// app.quit() reicht hier nicht (vor dem Start wird es ignoriert, der Rest liefe trotzdem an) → sofort beenden.
+// Die laufende Instanz bekommt "second-instance" und holt ihr Fenster nach vorne.
+if (!isTest && !app.requestSingleInstanceLock()) process.exit(0);
 
 const settings = new SettingsStore(path.join(app.getPath('userData'), 'settings.json'));
 const pairing = new Pairing({
@@ -57,6 +59,11 @@ const pairing = new Pairing({
 // Sparsam: SlimManager zeichnet ohne Grafikkarte (die gehört dem Spiel). Für ein Dashboard, das sich einmal
 // pro Sekunde ändert, reicht der Prozessor locker. Umschaltbar unter Einstellungen → Allgemein.
 if (!settings.data.app.gpu) app.disableHardwareAcceleration();
+// Speicher sparen (zum Testen umschaltbar): Zeichnen im Hauptprozess statt eigenem Prozess, sparsamer JavaScript-Speicher
+if (process.env.SM_LEAN !== '0') {
+  if (!settings.data.app.gpu) app.commandLine.appendSwitch('in-process-gpu');
+  app.commandLine.appendSwitch('js-flags', '--max-old-space-size=96 --optimize-for-size');
+}
 
 const monitor = new Monitor();
 const tweaks = new Tweaks({ dir: app.getPath('userData'), log: (...a) => log('tweaks', ...a) });
@@ -182,13 +189,8 @@ function createWindow() {
   win.on('enter-full-screen', () => (send('fullscreen', true), updateLive()));
   win.on('leave-full-screen', () => (send('fullscreen', false), updateLive()));
   for (const ev of ['hide', 'minimize']) win.on(ev, () => (updateLive(), updateProcWanted()));
-  win.on('close', (e) => {
-    // "Im Hintergrund weiterlaufen": Fenster nur verstecken, Taskleisten-Symbol bleibt
-    if (!quitting && settings.data.app.closeToTray && tray && !isTest) {
-      e.preventDefault();
-      win.hide();
-    }
-  });
+  // "Im Hintergrund weiterlaufen": Das Fenster wird wirklich geschlossen (spart ~200 MB Arbeitsspeicher),
+  // SlimManager läuft im Taskleisten-Symbol weiter und öffnet das Fenster bei Bedarf neu.
   win.on('closed', () => {
     win = null;
     rendererWatch.fast = rendererWatch.medium = 0;

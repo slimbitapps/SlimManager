@@ -10,6 +10,7 @@ const { EventEmitter } = require('node:events');
 const { execFile } = require('node:child_process');
 const os = require('node:os');
 const { WinSampler } = require('./winsampler.cjs');
+const { MacSampler } = require('./macsampler.cjs');
 
 const HISTORY = 300; // 5 Minuten bei 1 Messung pro Sekunde
 const HISTORY_KEYS = ['cpu', 'ram', 'gpu', 'gpuMem', 'cpuTemp', 'gpuTemp', 'netDown', 'netUp', 'diskRead', 'diskWrite', 'swap'];
@@ -43,12 +44,14 @@ class Monitor extends EventEmitter {
    * @param {{si?: any, platform?: string, interval?: number}} [opts]
    *   si = systeminformation (im Test durch eine Attrappe ersetzbar)
    */
-  constructor({ si = require('systeminformation'), platform = process.platform, interval = 1000, winSampler } = {}) {
+  constructor({ si = require('systeminformation'), platform = process.platform, interval = 1000, winSampler, macSampler } = {}) {
     super();
     this.si = si;
     this.platform = platform;
     // Windows: eigener, sparsamer Mess-Helfer statt vieler WMI-Abfragen
     this.ws = platform === 'win32' ? winSampler || new WinSampler() : null;
+    // Mac: eigener Helfer – systeminformation würde für fast jeden Wert ein Programm starten
+    this.mac = platform === 'darwin' ? macSampler || new MacSampler() : null;
     this.gpuPerPid = new Map();
     this.gpuPerPidAt = 0;
     this.slowAt = { fs: 0, bat: 0, temp: 0, tempMiss: 0 };
@@ -174,13 +177,25 @@ class Monitor extends EventEmitter {
       // Windows: Netzwerk/Speicher kosten dort je eine WMI-Abfrage → Netzwerk nur jede 2. Messung,
       // RAM direkt vom System (Auslagerung kommt mit den langsamen Werten)
       // Netzwerk höchstens 1× pro Sekunde (Windows: höchstens alle 2 s) – auch wenn die Anzeige schneller läuft
-      const netNow = !this.prevNet || Date.now() - this.prevNet.t >= (win ? 1900 : 950);
+      const mac = this.mac;
+      const netNow = !this.prevNet || Date.now() - this.prevNet.t >= (win || mac ? 1900 : 950);
+      // Festplatte am Mac/Linux höchstens alle 5 s (startet jedes Mal ein Programm), unter Windows gar nicht
+      const diskNow = !win && (!this.prevDisk || Date.now() - this.prevDisk.t >= (mac ? 4900 : 950));
+      const mc = mac ? mac.cpu() : null;
       const [load, mem, net, disk, speed] = await Promise.all([
-        safe(() => this.si.currentLoad()),
-        win ? Promise.resolve({ total: os.totalmem(), active: os.totalmem() - os.freemem(), swaptotal: this.slow.swapTotal, swapused: this.slow.swapUsed }) : safe(() => this.si.mem()),
-        !netNow ? Promise.resolve(null) : win ? safe(() => this.ws.net().then((n) => (n ? [{ rx_bytes: n.rx, tx_bytes: n.tx }] : null))) : safe(() => this.si.networkStats('*')),
-        win || (this.prevDisk && Date.now() - this.prevDisk.t < 950) ? Promise.resolve(null) : safe(() => this.si.disksIO()),
-        safe(() => this.si.cpuCurrentSpeed()),
+        mc ? Promise.resolve({ currentLoad: mc.total, cpus: mc.cores.map((l) => ({ load: l })) }) : safe(() => this.si.currentLoad()),
+        win
+          ? Promise.resolve({ total: os.totalmem(), active: os.totalmem() - os.freemem(), swaptotal: this.slow.swapTotal, swapused: this.slow.swapUsed })
+          : mac
+            ? safe(() => mac.memory())
+            : safe(() => this.si.mem()),
+        !netNow
+          ? Promise.resolve(null)
+          : win || mac
+            ? safe(() => (win ? this.ws : mac).net().then((n) => (n ? [{ rx_bytes: n.rx, tx_bytes: n.tx }] : null)))
+            : safe(() => this.si.networkStats('*')),
+        diskNow ? safe(() => this.si.disksIO()) : Promise.resolve(null),
+        mc ? Promise.resolve({ avg: mc.speed }) : safe(() => this.si.cpuCurrentSpeed()),
       ]);
       const now = Date.now();
 
@@ -254,8 +269,8 @@ class Monitor extends EventEmitter {
     const safe = (p) => Promise.resolve().then(p).catch(() => null);
     const win = this.platform === 'win32';
     const now = Date.now();
-    // Windows: Laufwerke/Akku kosten WMI → nur jede Minute. Temperatur: fehlt sie 3×, nur noch alle 10 Minuten probieren
-    const due = (k, ms) => !win || now - this.slowAt[k] >= ms;
+    // Windows/Mac: Laufwerke/Akku starten Programme bzw. kosten WMI → nur jede Minute. Temperatur: fehlt sie 3×, nur noch alle 10 Minuten probieren
+    const due = (k, ms) => (!win && !this.mac) || now - this.slowAt[k] >= ms;
     const wantTemp = this.slowAt.tempMiss < 3 || now - this.slowAt.temp >= 600_000;
     const [fs, bat, temp, mem] = await Promise.all([
       due('fs', 60_000) ? safe(() => this.si.fsSize()) : Promise.resolve(undefined),
@@ -290,7 +305,7 @@ class Monitor extends EventEmitter {
     if (this.procBusy) return;
     this.procBusy = true;
     try {
-      let list = this.ws ? await this.ws.processes(this.static?.cores || os.cpus().length) : null;
+      let list = this.ws ? await this.ws.processes(this.static?.cores || os.cpus().length) : this.mac ? await this.mac.processes() : null;
       if (!list) {
         const p = await this.si.processes();
         list = Array.isArray(p?.list) ? p.list : [];
@@ -320,7 +335,7 @@ class Monitor extends EventEmitter {
           if (g.memUsed !== null) this.gpu.memUsed = g.memUsed;
         });
       read();
-      this.timers.push(setInterval(read, 2000));
+      this.timers.push(setInterval(read, 3000));
     } else if (this.ws) {
       // Windows ohne NVIDIA: Leistungsindikatoren alle 3 s (nur wenn jemand zuschaut) – liefern GPU pro Prozess gratis mit
       // Mit NVIDIA: nvidia-smi für die Gesamtwerte, GPU pro Prozess nur, wenn die Prozessliste offen ist

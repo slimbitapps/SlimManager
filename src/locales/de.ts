@@ -148,7 +148,7 @@ export const de = {
   'look.radius': 'Ecken-Rundung',
   'look.font': 'Schrift',
   'look.motion': 'Bewegung',
-  'look.anim': 'Werte animieren (Zähl-Effekt)',
+  'look.anim': 'Werte animieren (Zähl-Effekt, braucht spürbar mehr CPU)',
   'look.rate': 'Aktualisierung',
   'look.rate.1': '1× pro s',
   'look.rate.2': '2× pro s',

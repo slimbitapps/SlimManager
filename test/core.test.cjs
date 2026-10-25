@@ -568,3 +568,43 @@ test('Prozessliste-Stufen: "medium" misst höchstens alle 5 s', async () => {
   await m.procTick();
   assert.equal(n, 1, 'aus = gar nicht');
 });
+
+test('Einstellungen Version 2: Zähl-Animation wird bei alten Einstellungen ausgeschaltet', () => {
+  const f = tmp();
+  fs.writeFileSync(f, JSON.stringify({ version: 1, look: { anim: true, skin: 'glass' } }));
+  const s = new SettingsStore(f);
+  assert.equal(s.data.look.anim, false);
+  assert.equal(s.data.look.skin, 'glass');
+  s.update({ look: { anim: true } });
+  assert.equal(new SettingsStore(f).data.look.anim, true, 'danach bleibt die eigene Wahl');
+});
+
+test('Mac-Messung: CPU aus os.cpus, vm_stat, netstat, ps', () => {
+  const { cpuLoad, parseVmStat, parseSwap, parseNetstatMac, parsePs } = require('../electron/core/macsampler.cjs');
+  const c = (u, i) => ({ times: { user: u, nice: 0, sys: 0, irq: 0, idle: i } });
+  const l = cpuLoad([c(100, 900), c(0, 1000)], [c(600, 1400), c(0, 2000)]);
+  assert.deepEqual(l.cores, [50, 0]);
+  assert.equal(l.total, 25);
+  const vm = 'Mach Virtual Memory Statistics: (page size of 4096 bytes)\nPages free: 100.\nPages active: 1000.\nPages wired down: 500.\nPages purgeable: 100.\nPages occupied by compressor: 200.\n';
+  assert.equal(parseVmStat(vm), (1000 - 100 + 500 + 200) * 4096);
+  assert.deepEqual(parseSwap('total = 1024.00M  used = 71.75M  free = 952.25M  (encrypted)'), { total: 1024 * 1048576, used: 71.75 * 1048576 });
+  const ns = `Name       Mtu   Network       Address            Ipkts Ierrs     Ibytes    Opkts Oerrs     Obytes  Coll
+lo0        16384 <Link#1>                         10     0       5000       10     0       5000     0
+en0        1500  <Link#6>    a4:83:e7:00:00:01    100     0     123456      90     0      65432     0
+en0        1500  192.168.1     192.168.1.5        100     -     123456      90     -      65432     -
+utun0      1380  <Link#9>                           5     0        500        5     0        400     0`;
+  assert.deepEqual(parseNetstatMac(ns), { rx: 123956, tx: 65832 });
+  const ps = '  501     1   1.5  286496  55   0 max /Applications/Claude.app/Contents/MacOS/Claude\n    1     0   0.0   9000  37   0 root /sbin/launchd\n';
+  const list = parsePs(ps);
+  assert.equal(list[0].name, 'Claude');
+  assert.equal(list[0].path, '/Applications/Claude.app/Contents/MacOS');
+  assert.equal(procs.classify(list[1], { platform: 'darwin' }), 'system');
+});
+
+test('Mac-Messung: Befehle laufen mit neutralem Zahlenformat (LC_ALL=C)', async () => {
+  const { MacSampler } = require('../electron/core/macsampler.cjs');
+  let env = null;
+  const m = new MacSampler({ exec: (cmd, args, o, cb) => ((env = o.env), cb(null, '')), cpus: () => [] });
+  await m.processes();
+  assert.equal(env.LC_ALL, 'C');
+});

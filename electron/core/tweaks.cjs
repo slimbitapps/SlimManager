@@ -452,6 +452,15 @@ class Tweaks {
     return true;
   }
 
+  /** Nichts mehr eingefroren/verändert → Helfer beenden (spart Arbeitsspeicher) */
+  idle() {
+    const j = this.journal;
+    if (j.frozen.length || j.affinity.length || j.power.length || j.bg.length || j.services) return;
+    this.close();
+    this.helper = null;
+    this.watchdog = null;
+  }
+
   close() {
     try {
       this.helper?.stdin.end();

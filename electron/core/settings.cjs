@@ -6,11 +6,11 @@ const { cleanLayout, cleanLook, cleanOverlay } = require('./layout.cjs');
 const { DEFAULT_EXCEPTIONS } = require('./boost.cjs');
 
 const DEFAULTS = {
-  version: 1,
+  version: 2,
   onboarded: false,
   prefs: { lang: '', theme: 'system', mode: 'simple' },
   // Aussehen des Dashboards (Skin, Hintergrund, Farben …)
-  look: { skin: 'neon', accent: '', bg: 'aurora', bgImage: false, dim: 0.45, blur: 0, cardAlpha: 0.72, radius: 16, font: 'system', rgb: false, anim: true, decimals: 0 },
+  look: { skin: 'neon', accent: '', bg: 'aurora', bgImage: false, dim: 0.45, blur: 0, cardAlpha: 0.72, radius: 16, font: 'system', rgb: false, anim: false, decimals: 0 },
   // null = Standard-Layout des Skins
   layout: { pc: null, phone: null },
   remote: { allowControl: true, approveNew: true, phoneLook: 'same' },
@@ -84,10 +84,19 @@ function sanitize(d) {
   return d;
 }
 
+/** Ältere Einstellungen anpassen */
+function migrate(raw) {
+  if (!raw || typeof raw !== 'object') return raw;
+  // Version 2: Zähl-Animation kostet am Mac ~10 % CPU → standardmäßig aus (wer will, schaltet sie wieder ein)
+  if ((raw.version || 1) < 2 && raw.look) raw.look.anim = false;
+  raw.version = DEFAULTS.version;
+  return raw;
+}
+
 class SettingsStore {
   constructor(file) {
     this.file = file;
-    this.data = sanitize(merge(DEFAULTS, readJson(file)));
+    this.data = sanitize(merge(DEFAULTS, migrate(readJson(file))));
   }
   save() {
     try {

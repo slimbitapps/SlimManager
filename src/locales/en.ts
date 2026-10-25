@@ -140,7 +140,7 @@ export const en: Dict = {
   'look.radius': 'Corner radius',
   'look.font': 'Font',
   'look.motion': 'Motion',
-  'look.anim': 'Animate values (count-up effect)',
+  'look.anim': 'Animate values (count-up effect, uses noticeably more CPU)',
   'look.rate': 'Refresh rate',
   'look.rate.1': '1× per s',
   'look.rate.2': '2× per s',

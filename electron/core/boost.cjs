@@ -264,6 +264,7 @@ class Boost extends EventEmitter {
         this.tweaks?.noteBackground?.(pid, false);
       } else setPriority(pid, level, this.setter);
     }
+    this.tweaks?.idle?.();
     const summary = {
       mode: s.mode,
       app: s.app,
