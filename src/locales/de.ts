@@ -265,7 +265,7 @@ export const de = {
   'boost.raise.desc': 'Priorität „Hoch“ für das Spiel.',
   'boost.raise.descMac': 'Am Mac nur mit Admin-Rechten möglich.',
   'boost.lower': 'Andere Programme bremsen',
-  'boost.lower.desc': 'Apps und Hintergrund-Programme bekommen „Niedriger als normal“.',
+  'boost.lower.desc': 'Gaming: alle anderen Programme treten zurück. Fokus: nur Hintergrund-Ballast (Updater, Sync …) – deine Apps bleiben schnell.',
   'boost.hotkey': 'Tastenkürzel',
   'boost.hotkey.desc': '{key} startet/beendet den Boost – auch mitten im Spiel.',
   'boost.honest': 'Ehrlich gesagt: Ein Boost bringt am meisten, wenn nebenbei viel läuft (Browser, Updates, Discord …). Auf einem aufgeräumten PC ist der Unterschied klein.',

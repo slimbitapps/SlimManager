@@ -94,7 +94,10 @@ function planBoost(procs, { mode = 'game', targetApp = '', cfg = {}, exceptions 
     const ballast = cfg.freezeBg && appKind.get(p.app) === 'background' && BALLAST.test(`${p.name} ${p.app}`);
     const freeze = !launcher && (inList(cfg.freezeList, p) || ballast);
     if (freeze) plan.freeze.push(p.pid);
-    if (cfg.lowerOthers !== false && (anyPrio || p.prio === 'normal') && !freeze) plan.lower.push(p.pid);
+    // Fokus: Du arbeitest gerade in deinen Apps → nur bekannten Hintergrund-Ballast bremsen, nie Apps oder ihre Helfer
+    // (sonst ruckelt z. B. der Browser beim Scrollen). Gaming: alles außer dem Spiel tritt zurück.
+    const mayLower = mode === 'game' || (appKind.get(p.app) === 'background' && BALLAST.test(`${p.name} ${p.app}`));
+    if (cfg.lowerOthers !== false && mayLower && (anyPrio || p.prio === 'normal') && !freeze) plan.lower.push(p.pid);
     if (mode === 'game' && cfg.cores && !freeze) plan.cores.push(p.pid);
     if (mode === 'game' && cfg.trimRam) plan.trim.push(p.pid);
   }

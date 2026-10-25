@@ -268,6 +268,12 @@ test('Boost-Plan: Helfer einer App werden nicht eingefroren, wenn die App selbst
   assert.deepEqual(plan.freeze, [104]);
 });
 
+test('Fokus-Modus bremst nie Apps, ihre Helfer oder Kommandozeilen-Programme – nur Ballast', () => {
+  const list = [P(1, 'Chrome', 'app', 'normal', 'chrome'), P(2, 'Chrome', 'background', 'normal', 'Chrome Helper (Renderer)'), P(3, 'node', 'background', 'normal', 'node'), P(4, 'GoogleUpdater', 'background'), P(5, 'Dropbox', 'background')];
+  const plan = planBoost(list, { mode: 'focus', cfg: { lowerOthers: true, freezeBg: false, freezeList: [], closeList: [] } });
+  assert.deepEqual(plan.lower.sort(), [104, 105]);
+});
+
 test('Fokus-Modus: kein Spiel nötig, nichts wird hochgestuft, keine Kerne/RAM-Tricks', () => {
   const plan = planBoost(LIST, { mode: 'focus', cfg: { lowerOthers: true, freezeBg: true, freezeList: [], closeList: ['Discord'], cores: true, trimRam: true } });
   assert.deepEqual(plan.raise, []);

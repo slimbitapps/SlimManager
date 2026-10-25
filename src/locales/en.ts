@@ -254,7 +254,7 @@ export const en: Dict = {
   'boost.raise.desc': '“High” priority for the game.',
   'boost.raise.descMac': 'Only possible with admin rights on a Mac.',
   'boost.lower': 'Slow down other programs',
-  'boost.lower.desc': 'Apps and background programs get “Below normal”.',
+  'boost.lower.desc': 'Gaming: all other programs step back. Focus: only background clutter (updaters, sync …) – your apps stay fast.',
   'boost.hotkey': 'Keyboard shortcut',
   'boost.hotkey.desc': '{key} starts/stops the boost – even in the middle of a game.',
   'boost.honest': 'To be honest: a boost helps most when a lot runs in the background (browser, updates, Discord …). On a tidy PC the difference is small.',
