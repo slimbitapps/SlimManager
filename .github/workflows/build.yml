@@ -53,6 +53,7 @@ jobs:
           Copy-Item src-tauri/binaries/slimmanager-core-x86_64-pc-windows-msvc.exe portable/SlimManager/slimmanager-core.exe
           Copy-Item -Recurse dist portable/SlimManager/web
           Compress-Archive -Path portable/SlimManager -DestinationPath out/SlimManager-Windows-portable.zip
+          node test/smoke.cjs portable/SlimManager/slimmanager-core.exe
           Get-ChildItem out | Format-Table Name, Length
       - uses: actions/upload-artifact@v4
         with:
@@ -92,6 +93,8 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           npx tauri build --bundles app,dmg
+          # Kern so testen, wie er in der fertigen App liegt (neu signiert)
+          node test/smoke.cjs src-tauri/target/release/bundle/macos/SlimManager.app/Contents/MacOS/slimmanager-core
           mkdir -p out
           cp src-tauri/target/release/bundle/dmg/*.dmg out/${{ matrix.file }}
           ls -la out

@@ -46,7 +46,8 @@
           "height": 420
         }
       },
-      "signingIdentity": "-"
+      "signingIdentity": "-",
+      "entitlements": "Entitlements.plist"
     },
     "windows": {
       "nsis": {
